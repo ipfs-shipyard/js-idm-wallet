@@ -1,6 +1,6 @@
 import createSecret from '../secret';
 
-const unavailabeError = new Error('Unavailable');
+const undefinedError = new Error('Not defined');
 
 it('should have all specification methods', () => {
     const secret = createSecret();
@@ -22,10 +22,10 @@ describe('set & get', () => {
         expect(secret.get()).toEqual(mockSecret);
     });
 
-    it('should throw if trying to get an unavailable secret', () => {
-        const secret = createSecret(unavailabeError);
+    it('should throw if trying to get an undefined secret', () => {
+        const secret = createSecret(undefinedError);
 
-        expect(() => secret.get()).toThrowError(unavailabeError);
+        expect(() => secret.get()).toThrowError(undefinedError);
     });
 });
 
@@ -89,11 +89,10 @@ describe('factory', () => {
 
         global.crypto = { getRandomValues: mockGetRandomValues };
 
-        const secret = createSecret(unavailabeError, true);
+        const secret = createSecret(undefinedError, true);
 
         expect(mockGetRandomValues).toHaveBeenCalledTimes(1);
         expect(mockGetRandomValues.mock.calls[0][0]).toHaveLength(32);
         expect(secret.get()).toEqual('foo');
     });
 });
-

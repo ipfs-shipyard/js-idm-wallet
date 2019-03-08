@@ -4,11 +4,11 @@ const SECRET_LENGTH = 32;
 
 class Secret {
     #secret;
-    #unavailabeError;
+    #undefinedError;
     #onDefinedChange = signal();
 
-    constructor({ unavailabeError, pristine }) {
-        this.#unavailabeError = unavailabeError;
+    constructor({ undefinedError, pristine }) {
+        this.#undefinedError = undefinedError;
 
         if (pristine) {
             this.#generate();
@@ -21,7 +21,7 @@ class Secret {
 
     get() {
         if (!this.#secret) {
-            throw this.#unavailabeError;
+            throw this.#undefinedError;
         }
 
         return this.#secret;
@@ -53,6 +53,6 @@ class Secret {
     }
 }
 
-const createSecret = (unavailabeError, pristine) => new Secret({ unavailabeError, pristine });
+const createSecret = (undefinedError, pristine) => new Secret({ undefinedError, pristine });
 
 export default createSecret;
