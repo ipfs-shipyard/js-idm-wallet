@@ -15,7 +15,7 @@ class PassphraseLock extends BaseLock {
     #onEnabledChange = signal();
 
     constructor({ storage, secret, master, storageKeyPrefix }) {
-        super(master);
+        super({ master });
 
         this.#storage = storage;
         this.#secret = secret;

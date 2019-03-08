@@ -1,7 +1,7 @@
 export default class BaseLock {
     #master;
 
-    constructor(master = false) {
+    constructor({ master = false }) {
         this.#master = !!master;
     }
 
