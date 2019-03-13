@@ -127,6 +127,7 @@ const parseMessage = (message) => {
         };
     }
 
+    /* istanbul ignore next */
     return {
         code: 'UNKNOWN',
         message,
