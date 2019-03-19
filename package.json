@@ -1,8 +1,9 @@
 {
-  "name": "js-idm-wallet",
+  "name": "idm-wallet",
   "version": "0.0.0",
   "description": "The reference implementation of the IDM Wallet in JavaScript",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "module": "es/index.js",
   "homepage": "https://github.com/ipfs-shipyard/js-idm-wallet#readme",
   "license": "MIT",
   "repository": {
@@ -20,13 +21,16 @@
     "url": "https://github.com/ipfs-shipyard/js-idm-wallet/issues"
   },
   "files": [
-    "lib"
+    "lib",
+    "es"
   ],
   "scripts": {
+    "build:commonjs": "BABEL_ENV=commonjs babel src -d lib",
+    "build:es": "BABEL_ENV=es babel src -d es",
+    "build": "npm run build:commonjs && npm run build:es",
     "test": "jest",
-    "build": "babel src --out-dir lib --ignore '**/*.test.js'",
-    "lint": "eslint --ignore-path .gitignore .",
-    "prerelease": "npm t && npm run lint",
+    "lint": "eslint .",
+    "prerelease": "npm t && npm run lint && npm run build",
     "release": "standard-version"
   },
   "husky": {
@@ -53,10 +57,7 @@
   },
   "jest": {
     "collectCoverage": true,
-    "collectCoverageFrom": [
-      "./src/**/*.js"
-    ],
-    "testRegex": "(/__tests__/.test.*|(\\.|/)(test|spec))\\.[jt]sx?$",
+    "testRegex": "/__tests__/.*\\.test\\.js$",
     "testPathIgnorePatterns": [
       "/demo/",
       "/lib/",
