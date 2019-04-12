@@ -81,7 +81,9 @@
     "standard-version": "^5.0.0"
   },
   "dependencies": {
+    "did-ipid": "^0.1.0",
     "hex-array": "^1.0.0",
+    "ipfs": "^0.35.0",
     "normalize-value": "^1.0.1",
     "pico-signals": "^1.0.0",
     "scrypt-async": "^2.0.1",
