@@ -7,19 +7,19 @@ import checkPassphraseStrength from './util/passphrase-strength';
 
 const pScrypt = pify(scrypt, { errorFirst: false });
 
+const STORAGE_KEY = 'locker.lock.passphrase';
+
 class PassphraseLock extends BaseLock {
     #storage;
     #secret;
-    #storageKey;
 
     #onEnabledChange = signal();
 
-    constructor({ storage, secret, master, storageKeyPrefix }) {
+    constructor({ storage, secret, master }) {
         super({ master });
 
         this.#storage = storage;
         this.#secret = secret;
-        this.#storageKey = `${storageKeyPrefix}.passphrase`;
     }
 
     isMaster() {
@@ -27,7 +27,7 @@ class PassphraseLock extends BaseLock {
     }
 
     async isEnabled() {
-        return this.#storage.has(this.#storageKey);
+        return isEnabled(this.#storage);
     }
 
     async enable(passphrase) {
@@ -39,7 +39,7 @@ class PassphraseLock extends BaseLock {
 
     async disable() {
         await super.disable();
-        await this.#storage.remove(this.#storageKey);
+        await this.#storage.remove(STORAGE_KEY);
 
         this.#onEnabledChange.dispatch(false);
     }
@@ -70,7 +70,7 @@ class PassphraseLock extends BaseLock {
         await super.unlock();
 
         // Read the previous saved stuff from the storage
-        let { derivedKey, encryptedSecret } = await this.#storage.get(this.#storageKey);
+        let { derivedKey, encryptedSecret } = await this.#storage.get(STORAGE_KEY);
 
         derivedKey = {
             ...derivedKey,
@@ -108,7 +108,7 @@ class PassphraseLock extends BaseLock {
         const { iv, cypherText } = await this.#encryptSecret(secret, key);
 
         // Finally store everything that we need to validate the passphrase in the future
-        await this.#storage.set(this.#storageKey, {
+        await this.#storage.set(STORAGE_KEY, {
             derivedKey: {
                 algorithm: 'scrypt',
                 params,
@@ -187,7 +187,10 @@ class PassphraseLock extends BaseLock {
     }
 }
 
-const createPassphraseLock = (storage, secret, master, storageKeyPrefix) =>
-    new PassphraseLock({ storage, secret, master, storageKeyPrefix });
+const isEnabled = async (storage) => storage.has(STORAGE_KEY);
+
+const createPassphraseLock = (storage, secret, master) =>
+    new PassphraseLock({ storage, secret, master });
 
 export default createPassphraseLock;
+export { isEnabled };

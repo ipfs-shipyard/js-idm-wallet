@@ -1,8 +1,10 @@
-import passphrase from './passphrase';
+import * as passphrase from './passphrase';
 
-const STORAGE_KEY_PREFIX = 'locker.lock';
 const availableTypes = {
-    passphrase,
+    passphrase: {
+        create: ({ storage, secret, master }) => passphrase.default(storage, secret, master),
+        isEnabled: ({ storage }) => passphrase.isEnabled(storage),
+    },
 };
 
 const assertLockType = (type) => {
@@ -11,18 +13,20 @@ const assertLockType = (type) => {
     }
 };
 
-const createLock = (type, { storage, secret, master }) => {
+const createLock = (type, params) => {
     assertLockType(type);
 
-    if (type === 'passphrase') {
-        return availableTypes[type](storage, secret, master, STORAGE_KEY_PREFIX);
-    }
+    const { create } = availableTypes[type];
+
+    return create(params);
 };
 
-const isEnabled = async (type, { storage }) => {
+const isEnabled = async (type, params) => {
     assertLockType(type);
 
-    return storage.has(`${STORAGE_KEY_PREFIX}.${type}`);
+    const { isEnabled } = availableTypes[type];
+
+    return isEnabled(params);
 };
 
 export default createLock;
