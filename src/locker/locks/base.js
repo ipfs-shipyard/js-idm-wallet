@@ -35,7 +35,7 @@ export default class BaseLock {
 
     #assertNotMaster = () => {
         if (this.#master) {
-            throw new Error('Invalid operation on the master lock', { code: 'INVALID_OPERATION' });
+            throw Object.assign(new Error('Invalid operation on the master lock'), { code: 'INVALID_OPERATION' });
         }
     }
 
@@ -43,7 +43,7 @@ export default class BaseLock {
         const enabled = await this.isEnabled();
 
         if (!enabled) {
-            throw new Error('This lock must be enabled', { code: 'NOT_ENABLED' });
+            throw Object.assign(new Error('This lock must be enabled'), { code: 'NOT_ENABLED' });
         }
     }
 
@@ -51,7 +51,7 @@ export default class BaseLock {
         const enabled = await this.isEnabled();
 
         if (enabled) {
-            throw new Error('This lock must be disabled', { code: 'NOT_DISABLED' });
+            throw Object.assign(new Error('This lock must be disabled'), { code: 'NOT_DISABLED' });
         }
     }
 }
