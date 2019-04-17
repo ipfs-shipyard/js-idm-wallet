@@ -1,0 +1,10 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`getMethods should return all available methods and its information 1`] = `
+Array [
+  Object {
+    "description": "The Interplanetary Identifiers DID method",
+    "method": "ipid",
+  },
+]
+`;
