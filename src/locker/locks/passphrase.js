@@ -2,72 +2,84 @@ import scrypt from 'scrypt-async';
 import hexarray from 'hex-array';
 import pify from 'pify';
 import signal from 'pico-signals';
-import BaseLock from './base';
 import checkPassphraseStrength from './util/passphrase-strength';
+import { assertDisabled, assertEnabled, assertNotMaster } from './util/asserts';
+import { LockValidationError, UnlockMismatchError } from '../../utils/errors';
 
 const pScrypt = pify(scrypt, { errorFirst: false });
 
 const STORAGE_KEY = 'locker.lock.passphrase';
 
-class PassphraseLock extends BaseLock {
+class PassphraseLock {
     #storage;
     #secret;
+    #master;
+    #enabled;
 
     #onEnabledChange = signal();
 
-    constructor({ storage, secret, master }) {
-        super({ master });
-
+    constructor({ storage, secret, master = false, enabled = false }) {
         this.#storage = storage;
         this.#secret = secret;
+        this.#master = !!master;
+        this.#enabled = !!enabled;
     }
 
     isMaster() {
-        return super.isMaster();
+        return this.#master;
     }
 
-    async isEnabled() {
-        return isEnabled(this.#storage);
-    }
-
-    async enable(passphrase) {
-        await super.enable(passphrase);
-        await this.#configure(passphrase);
-
-        this.#onEnabledChange.dispatch(true);
-    }
-
-    async disable() {
-        await super.disable();
-        await this.#storage.remove(STORAGE_KEY);
-
-        this.#onEnabledChange.dispatch(false);
+    isEnabled() {
+        return this.#enabled;
     }
 
     onEnabledChange(fn) {
         return this.#onEnabledChange.add(fn);
     }
 
+    async enable(passphrase) {
+        assertDisabled(this.#enabled);
+
+        await this.validate(passphrase);
+        await this.#configure(passphrase);
+
+        this.#dispatchEnabledChange(true);
+    }
+
+    async disable() {
+        assertEnabled(this.#enabled);
+        assertNotMaster(this.#master);
+
+        await this.#storage.remove(STORAGE_KEY);
+
+        this.#dispatchEnabledChange(false);
+    }
+
     async validate(passphrase) {
         const result = checkPassphraseStrength(passphrase);
 
         if (result.score < 0.5) {
-            throw Object.assign(new Error('Passphrase is too weak'), {
-                code: 'PASSPHRASE_TOO_WEAK',
-                ...result,
-            });
+            throw new LockValidationError('Passphrase is too weak', result);
         }
 
         return result;
     }
 
     async update(newPassphrase, passphrase) {
-        await super.update(newPassphrase, passphrase);
+        assertEnabled(this.#enabled);
+
+        await this.validate(newPassphrase);
+
+        // Be sure that the user is able to unlock if this is the master lock
+        if (this.#master) {
+            await this.unlock(passphrase);
+        }
+
         await this.#configure(newPassphrase);
     }
 
     async unlock(input) {
-        await super.unlock();
+        assertEnabled(this.#enabled);
 
         // Read the previous saved stuff from the storage
         let { derivedKey, encryptedSecret } = await this.#storage.get(STORAGE_KEY);
@@ -93,7 +105,7 @@ class PassphraseLock extends BaseLock {
         try {
             secret = await this.#decryptSecret(encryptedSecret.cypherText, encryptedSecret.iv, key);
         } catch (err) {
-            throw Object.assign(new Error('Passphrase is invalid'), { code: 'PASSPHRASE_MISMATCH' });
+            throw new UnlockMismatchError('Passphrase is invalid');
         }
 
         this.#secret.set(secret);
@@ -185,12 +197,16 @@ class PassphraseLock extends BaseLock {
 
         return new Uint8Array(secret);
     }
+
+    #dispatchEnabledChange = (enabled) => {
+        this.#enabled = enabled;
+        this.#onEnabledChange.dispatch(enabled);
+    }
 }
 
 const isEnabled = async (storage) => storage.has(STORAGE_KEY);
 
-const createPassphraseLock = (storage, secret, master) =>
-    new PassphraseLock({ storage, secret, master });
+const createPassphraseLock = (params) => new PassphraseLock({ ...params });
 
 export default createPassphraseLock;
 export { isEnabled };

@@ -7,12 +7,8 @@ class Secret {
     #undefinedError;
     #onDefinedChange = signal();
 
-    constructor({ undefinedError, pristine }) {
+    constructor({ undefinedError }) {
         this.#undefinedError = undefinedError;
-
-        if (pristine) {
-            this.#generate();
-        }
     }
 
     has() {
@@ -44,15 +40,15 @@ class Secret {
         this.#onDefinedChange.dispatch(this.#secret);
     }
 
+    generate() {
+        this.set(crypto.getRandomValues(new Uint8Array(SECRET_LENGTH)));
+    }
+
     onDefinedChange(fn) {
         return this.#onDefinedChange.add(fn);
     }
-
-    #generate = () => {
-        this.set(crypto.getRandomValues(new Uint8Array(SECRET_LENGTH)));
-    }
 }
 
-const createSecret = (undefinedError, pristine) => new Secret({ undefinedError, pristine });
+const createSecret = (undefinedError) => new Secret({ undefinedError });
 
 export default createSecret;

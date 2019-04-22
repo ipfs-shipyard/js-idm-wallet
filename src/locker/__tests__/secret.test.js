@@ -56,6 +56,22 @@ describe('unset', () => {
     });
 });
 
+describe('generate', () => {
+    it('should generate secret', () => {
+        const mockGetRandomValues = jest.fn(() => 'foo');
+
+        global.crypto = { getRandomValues: mockGetRandomValues };
+
+        const secret = createSecret(undefinedError);
+
+        secret.generate();
+
+        expect(mockGetRandomValues).toHaveBeenCalledTimes(1);
+        expect(mockGetRandomValues.mock.calls[0][0]).toHaveLength(32);
+        expect(secret.get()).toEqual('foo');
+    });
+});
+
 describe('onDefinedChange', () => {
     it('should add callback to be called on definition change', () => {
         const secret = createSecret();
@@ -80,19 +96,5 @@ describe('onDefinedChange', () => {
         secret.set('foo');
 
         expect(handleDefinedChange).toHaveBeenCalledTimes(0);
-    });
-});
-
-describe('factory', () => {
-    it('should generate secret if pristine', () => {
-        const mockGetRandomValues = jest.fn(() => 'foo');
-
-        global.crypto = { getRandomValues: mockGetRandomValues };
-
-        const secret = createSecret(undefinedError, true);
-
-        expect(mockGetRandomValues).toHaveBeenCalledTimes(1);
-        expect(mockGetRandomValues.mock.calls[0][0]).toHaveLength(32);
-        expect(secret.get()).toEqual('foo');
     });
 });

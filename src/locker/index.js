@@ -1,32 +1,41 @@
 import signal from 'pico-signals';
-import createLock, { isEnabled as isLockEnabled } from './locks';
+import createLocks from './locks';
 import createIdleTimer from './idle-timer';
 import createSecret from './secret';
+import { LockerLockedError, PristineError } from '../utils/errors';
 
 class Locker {
+    #locks;
+    #secret;
     #storage;
-    #idleTimer;
     #pristine;
+    #idleTimer;
     #masterLockType;
 
-    #secret;
-    #locks = new Map();
     #onLocked = signal();
 
-    constructor({ storage, pristine, masterLockType, idleTimer }) {
+    constructor({ storage, secret, locks, idleTimer, masterLockType }) {
+        this.#locks = locks;
+        this.#secret = secret;
         this.#storage = storage;
-        this.#pristine = pristine;
         this.#masterLockType = masterLockType;
+
+        this.#pristine = !this.#locks[masterLockType] || !this.#locks[masterLockType].isEnabled();
 
         this.#idleTimer = idleTimer;
         this.#idleTimer.onTimeout(this.#handleIdleTimerTimeout);
 
-        this.#secret = createSecret(Object.assign(new Error('Locker is locked'), { code: 'LOCKED' }), pristine);
-        this.#secret.onDefinedChange(this.#handleSecretDefinedChange);
+        if (this.#locks[masterLockType]) {
+            this.#locks[masterLockType].onEnabledChange(this.#handleMasterLockEnabledChange);
+        }
 
         if (!this.#pristine) {
             this.#idleTimer.restart();
+        } else {
+            this.#secret.generate();
         }
+
+        this.#secret.onDefinedChange(this.#handleSecretDefinedChange);
     }
 
     isPristine() {
@@ -50,27 +59,12 @@ class Locker {
     }
 
     getLock(type) {
-        if (!this.#locks.has(type)) {
-            const master = this.#masterLockType === type;
-            const lock = createLock(type, {
-                storage: this.#storage,
-                secret: this.#secret,
-                master,
-            });
-
-            if (master) {
-                lock.onEnabledChange(this.#handleMasterLockEnabledChange);
-            }
-
-            this.#locks.set(type, lock);
-        }
-
-        return this.#locks.get(type);
+        return this.#locks[type];
     }
 
     lock() {
         if (this.#pristine) {
-            throw Object.assign(new Error('Can\'t lock until you configure the master lock'), { code: 'IS_PRISTINE' });
+            throw new PristineError();
         }
 
         this.#secret.unset();
@@ -106,10 +100,12 @@ class Locker {
 }
 
 const createLocker = async (storage, masterLockType = 'passphrase') => {
-    const pristine = !await isLockEnabled(masterLockType, { storage });
+    const secret = createSecret(new LockerLockedError());
+
+    const locks = await createLocks(storage, secret, masterLockType);
     const idleTimer = await createIdleTimer(storage);
 
-    return new Locker({ storage, pristine, masterLockType, idleTimer });
+    return new Locker({ storage, secret, locks, idleTimer, masterLockType });
 };
 
 export default createLocker;

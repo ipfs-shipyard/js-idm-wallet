@@ -85,6 +85,7 @@
     "hex-array": "^1.0.0",
     "ipfs": "^0.35.0",
     "normalize-value": "^1.0.1",
+    "p-props": "^2.0.0",
     "pico-signals": "^1.0.0",
     "scrypt-async": "^2.0.1",
     "zxcvbn": "^4.4.2"

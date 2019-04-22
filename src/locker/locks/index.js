@@ -1,33 +1,26 @@
-import * as passphrase from './passphrase';
+import pProps from 'p-props';
+import createPassphrase, { isEnabled as isPassphraseEnabled } from './passphrase';
 
-const availableTypes = {
+const types = {
     passphrase: {
-        create: ({ storage, secret, master }) => passphrase.default(storage, secret, master),
-        isEnabled: ({ storage }) => passphrase.isEnabled(storage),
+        create: createPassphrase,
+        isEnabled: isPassphraseEnabled,
     },
 };
 
-const assertLockType = (type) => {
-    if (!availableTypes[type]) {
-        throw Object.assign(new Error('Unavailable lock type'), { code: 'UNAVAILABLE_TYPE' });
-    }
+const createLocks = async (storage, secret, master = 'passphrase') => {
+    const enabled = await pProps({
+        passphrase: types.passphrase.isEnabled(storage),
+    });
+
+    return {
+        passphrase: createPassphrase({
+            storage,
+            secret,
+            master: master === 'passphrase',
+            enabled: !!enabled.passphrase,
+        }),
+    };
 };
 
-const createLock = (type, params) => {
-    assertLockType(type);
-
-    const { create } = availableTypes[type];
-
-    return create(params);
-};
-
-const isEnabled = async (type, params) => {
-    assertLockType(type);
-
-    const { isEnabled } = availableTypes[type];
-
-    return isEnabled(params);
-};
-
-export default createLock;
-export { isEnabled };
+export default createLocks;
