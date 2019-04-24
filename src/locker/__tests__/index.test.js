@@ -24,9 +24,16 @@ const mockLock = {
     onEnabledChange: jest.fn(),
 };
 
+const mockLocks = {
+    passphrase: {
+        isEnabled: jest.fn(() => false),
+        onEnabledChange: jest.fn(),
+    },
+};
+
 jest.mock('../idle-timer', () => jest.fn(() => mockIdleTimer));
 jest.mock('../secret', () => jest.fn(() => mockSecret));
-jest.mock('../locks', () => jest.fn(() => ({})));
+jest.mock('../locks', () => jest.fn(() => mockLocks));
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -34,7 +41,7 @@ beforeEach(() => {
 
 describe('factory', () => {
     it('should create locker successfully if pristine', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage);
 
         expect(createSecret).toHaveBeenCalledTimes(1);
         expect(createSecret).toHaveBeenCalledWith(new LockerLockedError());
@@ -55,11 +62,12 @@ describe('factory', () => {
         expect(typeof locker.isPristine).toEqual('function');
         expect(typeof locker.isLocked).toEqual('function');
         expect(typeof locker.getSecret).toEqual('function');
-        expect(typeof locker.getIdleTimer).toEqual('function');
-        expect(typeof locker.getMasterLock).toEqual('function');
         expect(typeof locker.getLock).toEqual('function');
         expect(typeof locker.lock).toEqual('function');
         expect(typeof locker.onLockedChange).toEqual('function');
+
+        expect(typeof locker.idleTimer).toEqual('object');
+        expect(typeof locker.masterLock).toEqual('object');
     });
 
     it('should create locker successfully if not pristine', async () => {
@@ -86,11 +94,30 @@ describe('factory', () => {
         expect(typeof locker.isPristine).toEqual('function');
         expect(typeof locker.isLocked).toEqual('function');
         expect(typeof locker.getSecret).toEqual('function');
-        expect(typeof locker.getIdleTimer).toEqual('function');
-        expect(typeof locker.getMasterLock).toEqual('function');
         expect(typeof locker.getLock).toEqual('function');
         expect(typeof locker.lock).toEqual('function');
         expect(typeof locker.onLockedChange).toEqual('function');
+
+        expect(typeof locker.idleTimer).toEqual('object');
+        expect(typeof locker.masterLock).toEqual('object');
+    });
+});
+
+describe('idleTimer', () => {
+    it('should return idle timer', async () => {
+        const locker = await createLocker(mockStorage, 'passphrase');
+
+        expect(locker.idleTimer).toEqual(mockIdleTimer);
+    });
+});
+
+describe('masterLock', () => {
+    it('should return master lock', async () => {
+        createLocks.mockImplementationOnce(jest.fn(() => ({ passphrase: mockLock })));
+
+        const locker = await createLocker(mockStorage, 'passphrase');
+
+        expect(locker.masterLock).toEqual(mockLock);
     });
 });
 
@@ -135,14 +162,6 @@ describe('getSecret', () => {
     });
 });
 
-describe('getIdleTimer', () => {
-    it('should return idle timer', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
-
-        expect(locker.getIdleTimer()).toEqual(mockIdleTimer);
-    });
-});
-
 describe('getLock', () => {
     it('should return lock successfully', async () => {
         const mockLocks = { passphrase: mockLock };
@@ -155,21 +174,9 @@ describe('getLock', () => {
     });
 
     it('should return undefined if lock is unavailable', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, 'foobar');
 
-        expect(locker.getLock('passphrase')).toBeUndefined();
-    });
-});
-
-describe('getMasterLock', () => {
-    it('should return master lock', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
-
-        locker.getLock = jest.fn();
-        locker.getMasterLock();
-
-        expect(locker.getLock).toHaveBeenCalledTimes(1);
-        expect(locker.getLock).toHaveBeenCalledWith('passphrase');
+        expect(locker.getLock('foobar')).toBeUndefined();
     });
 });
 

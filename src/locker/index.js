@@ -9,10 +9,12 @@ class Locker {
     #secret;
     #storage;
     #pristine;
-    #idleTimer;
     #masterLockType;
 
     #onLocked = signal();
+
+    idleTimer;
+    masterLock;
 
     constructor({ storage, secret, locks, idleTimer, masterLockType }) {
         this.#locks = locks;
@@ -20,19 +22,21 @@ class Locker {
         this.#storage = storage;
         this.#masterLockType = masterLockType;
 
-        this.#pristine = !this.#locks[masterLockType] || !this.#locks[masterLockType].isEnabled();
+        this.masterLock = this.#locks[masterLockType];
 
-        this.#idleTimer = idleTimer;
-        this.#idleTimer.onTimeout(this.#handleIdleTimerTimeout);
+        this.idleTimer = idleTimer;
+        this.idleTimer.onTimeout(this.#handleIdleTimerTimeout);
 
-        if (this.#locks[masterLockType]) {
-            this.#locks[masterLockType].onEnabledChange(this.#handleMasterLockEnabledChange);
-        }
+        this.#pristine = !this.masterLock || !this.masterLock.isEnabled();
 
         if (!this.#pristine) {
-            this.#idleTimer.restart();
+            this.idleTimer.restart();
         } else {
             this.#secret.generate();
+        }
+
+        if (this.masterLock) {
+            this.masterLock.onEnabledChange(this.#handleMasterLockEnabledChange);
         }
 
         this.#secret.onDefinedChange(this.#handleSecretDefinedChange);
@@ -48,14 +52,6 @@ class Locker {
 
     getSecret() {
         return this.#secret.get();
-    }
-
-    getIdleTimer() {
-        return this.#idleTimer;
-    }
-
-    getMasterLock() {
-        return this.getLock(this.#masterLockType);
     }
 
     getLock(type) {
@@ -84,7 +80,7 @@ class Locker {
         const locked = this.isLocked();
 
         if (!locked) {
-            this.#idleTimer.restart();
+            this.idleTimer.restart();
         }
 
         this.#onLocked.dispatch(locked);
@@ -94,7 +90,7 @@ class Locker {
         this.#pristine = !enabled;
 
         if (enabled) {
-            this.#idleTimer.restart();
+            this.idleTimer.restart();
         }
     }
 }
