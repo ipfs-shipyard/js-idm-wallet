@@ -16,10 +16,10 @@ beforeEach(() => {
 it('should have all supported methods', async () => {
     const ipid = createIpid();
 
-    expect(typeof ipid.resolve).toEqual('function');
-    expect(typeof ipid.create).toEqual('function');
-    expect(typeof ipid.update).toEqual('function');
-    expect(typeof ipid.isPublicKeyValid).toEqual('function');
+    expect(typeof ipid.resolve).toBe('function');
+    expect(typeof ipid.create).toBe('function');
+    expect(typeof ipid.update).toBe('function');
+    expect(typeof ipid.isPublicKeyValid).toBe('function');
     expect(ipid.constructor.info).toEqual({
         method: 'ipid',
         description: 'The Interplanetary Identifiers DID method (IPID) supports DIDs on the public and private Interplanetary File System (IPFS) networks.',
@@ -44,7 +44,7 @@ describe('resolve', () => {
 
         mockDidIpid.resolve.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        expect(ipid.resolve('did:ipid:foo')).rejects.toThrow('bar');
+        await expect(ipid.resolve('did:ipid:foo')).rejects.toThrow('bar');
     });
 });
 
@@ -58,11 +58,11 @@ describe('create', () => {
 
         expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if did-ipid create is unsuccessful', async () => {
-        expect.assertions(2);
+        expect.assertions(3);
 
         mockDidIpid.create.mockImplementationOnce(() => { throw new Error('bar'); });
 
@@ -75,7 +75,8 @@ describe('create', () => {
             await ipid.create(mockParams, mockOperations);
         } catch (err) {
             expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
-            expect(err.message).toEqual('bar');
+            expect(mockOperations).toHaveBeenCalledTimes(0);
+            expect(err.message).toBe('bar');
         }
     });
 });
@@ -91,11 +92,11 @@ describe('update', () => {
 
         expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if did-ipid update is unsuccessful', async () => {
-        expect.assertions(2);
+        expect.assertions(3);
 
         mockDidIpid.update.mockImplementationOnce(() => { throw new Error('bar'); });
 
@@ -109,7 +110,8 @@ describe('update', () => {
             await ipid.update(mockDid, mockParams, mockOperations);
         } catch (err) {
             expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
-            expect(err.message).toEqual('bar');
+            expect(mockOperations).toHaveBeenCalledTimes(0);
+            expect(err.message).toBe('bar');
         }
     });
 });
@@ -121,7 +123,7 @@ describe('isPublicKeyValid', () => {
         const ipid = createIpid();
         const isValid = await ipid.isPublicKeyValid('did:ipid:foo', 'bar');
 
-        expect(isValid).toBeTruthy();
+        expect(isValid).toBe(true);
         expect(mockDidIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
     });
 
@@ -131,7 +133,7 @@ describe('isPublicKeyValid', () => {
         const ipid = createIpid();
         const isValid = await ipid.isPublicKeyValid('did:ipid:foo', 'bar');
 
-        expect(isValid).toBeFalsy();
+        expect(isValid).toBe(false);
         expect(mockDidIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
     });
 
@@ -140,7 +142,7 @@ describe('isPublicKeyValid', () => {
 
         const ipid = createIpid();
 
-        expect(ipid.isPublicKeyValid('did:ipid:foo', 'bar')).rejects.toThrow('bar');
+        await expect(ipid.isPublicKeyValid('did:ipid:foo', 'bar')).rejects.toThrow('bar');
     });
 });
 

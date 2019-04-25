@@ -5,11 +5,11 @@ const undefinedError = new Error('Not defined');
 it('should have all specification methods', () => {
     const secret = createSecret();
 
-    expect(typeof secret.has).toEqual('function');
-    expect(typeof secret.get).toEqual('function');
-    expect(typeof secret.set).toEqual('function');
-    expect(typeof secret.unset).toEqual('function');
-    expect(typeof secret.onDefinedChange).toEqual('function');
+    expect(typeof secret.has).toBe('function');
+    expect(typeof secret.get).toBe('function');
+    expect(typeof secret.set).toBe('function');
+    expect(typeof secret.unset).toBe('function');
+    expect(typeof secret.onDefinedChange).toBe('function');
 });
 
 describe('set & get', () => {
@@ -19,7 +19,7 @@ describe('set & get', () => {
 
         secret.set(mockSecret);
 
-        expect(secret.get()).toEqual(mockSecret);
+        expect(secret.get()).toBe(mockSecret);
     });
 
     it('should throw if trying to get an undefined secret', () => {
@@ -35,13 +35,13 @@ describe('has', () => {
 
         secret.set('foo');
 
-        expect(secret.has()).toBeTruthy();
+        expect(secret.has()).toBe(true);
     });
 
     it('should return false if secret is ot set', () => {
         const secret = createSecret();
 
-        expect(secret.has()).toBeFalsy();
+        expect(secret.has()).toBe(false);
     });
 });
 
@@ -52,7 +52,23 @@ describe('unset', () => {
         secret.set('foo');
         secret.unset();
 
-        expect(secret.has()).toBeFalsy();
+        expect(secret.has()).toBe(false);
+    });
+});
+
+describe('generate', () => {
+    it('should generate secret', () => {
+        const mockGetRandomValues = jest.fn(() => 'foo');
+
+        global.crypto = { getRandomValues: mockGetRandomValues };
+
+        const secret = createSecret(undefinedError);
+
+        secret.generate();
+
+        expect(mockGetRandomValues).toHaveBeenCalledTimes(1);
+        expect(mockGetRandomValues.mock.calls[0][0]).toHaveLength(32);
+        expect(secret.get()).toBe('foo');
     });
 });
 
@@ -80,19 +96,5 @@ describe('onDefinedChange', () => {
         secret.set('foo');
 
         expect(handleDefinedChange).toHaveBeenCalledTimes(0);
-    });
-});
-
-describe('factory', () => {
-    it('should generate secret if pristine', () => {
-        const mockGetRandomValues = jest.fn(() => 'foo');
-
-        global.crypto = { getRandomValues: mockGetRandomValues };
-
-        const secret = createSecret(undefinedError, true);
-
-        expect(mockGetRandomValues).toHaveBeenCalledTimes(1);
-        expect(mockGetRandomValues.mock.calls[0][0]).toHaveLength(32);
-        expect(secret.get()).toEqual('foo');
     });
 });

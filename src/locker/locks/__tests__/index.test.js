@@ -1,31 +1,31 @@
-import createLock, { isEnabled } from '../index';
+import createLocks from '../index';
 
-describe('factory', () => {
-    it('should create passphrase lock successfully', () => {
-        const passphraseLock = createLock('passphrase', {});
-
-        expect(passphraseLock.constructor.name).toEqual('PassphraseLock');
-    });
-
-    it('should fail with unknown lock type', () => {
-        expect(() => createLock('foo', {})).toThrow('Unavailable lock type');
-    });
-});
-
-describe('isEnabled', () => {
-    it('should be true if lock type in storage', () => {
+describe('createLocks', () => {
+    it('should create all lock types correctly', async () => {
         const storage = { has: jest.fn(() => true) };
 
-        expect(isEnabled('passphrase', { storage })).resolves.toBeTruthy();
+        const locks = await createLocks(storage, {});
+
+        expect(Object.keys(locks)).toEqual(['passphrase']);
+
+        expect(locks.passphrase.isMaster()).toBe(true);
+        expect(locks.passphrase.isEnabled()).toBe(true);
     });
 
-    it('should be false if lock type not in storage', () => {
+    it('should create all lock types with non enabled types', async () => {
         const storage = { has: jest.fn(() => false) };
 
-        expect(isEnabled('passphrase', { storage })).resolves.toBeFalsy();
+        const locks = await createLocks(storage, {}, 'fingerprint');
+
+        expect(Object.keys(locks)).toEqual(['passphrase']);
+
+        expect(locks.passphrase.isMaster()).toBe(false);
+        expect(locks.passphrase.isEnabled()).toBe(false);
     });
 
-    it('should fail with unknown lock type', () => {
-        expect(isEnabled('foo', {})).rejects.toThrow('Unavailable lock type');
+    it('should fail if one of the isEnabled methods rejects', async () => {
+        const storage = { has: jest.fn(() => Promise.reject(new Error('foo'))) };
+
+        await expect(createLocks(storage, {}, 'passphrase')).rejects.toThrow('foo');
     });
 });

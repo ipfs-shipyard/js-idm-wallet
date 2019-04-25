@@ -19,21 +19,21 @@ beforeEach(() => {
 });
 
 it('should have all specification methods', () => {
-    expect(typeof storage.get).toEqual('function');
-    expect(typeof storage.set).toEqual('function');
-    expect(typeof storage.remove).toEqual('function');
-    expect(typeof storage.clear).toEqual('function');
+    expect(typeof storage.get).toBe('function');
+    expect(typeof storage.set).toBe('function');
+    expect(typeof storage.remove).toBe('function');
+    expect(typeof storage.clear).toBe('function');
 });
 
 describe('has', () => {
     it('should return false if key is not set', async () => {
-        await expect(storage.has('key')).resolves.toEqual(false);
+        await expect(storage.has('key')).resolves.toBe(false);
     });
 
     it('should return true if key is set', async () => {
         localStorage.setItem('foo', '"bar"');
 
-        await expect(storage.has('foo')).resolves.toEqual(true);
+        await expect(storage.has('foo')).resolves.toBe(true);
     });
 
     it('should reject if anything goes wrong', async () => {
@@ -51,7 +51,7 @@ describe('get', () => {
     it('should return the correct value', async () => {
         localStorage.setItem('foo', '"bar"');
 
-        await expect(storage.get('foo')).resolves.toEqual('bar');
+        await expect(storage.get('foo')).resolves.toBe('bar');
     });
 
     it('should reject if anything goes wrong', async () => {

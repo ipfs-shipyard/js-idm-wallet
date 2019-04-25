@@ -10,10 +10,16 @@ class SetupMasterLock extends Component {
     }
 
     render() {
-        const { loading } = this.state;
-        
+        const { loading, error } = this.state;
+    
         if (loading) {
             return <div>...Loading...</div>;
+        }
+
+        if (error) {
+            console.error(error);
+
+            return <div>{ error.message }</div>;
         }
 
         return (

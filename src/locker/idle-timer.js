@@ -13,7 +13,7 @@ class IdleTimer {
 
     #onTimeout = signal();
 
-    constructor({ storage, maxTime }) {
+    constructor(storage, maxTime) {
         this.#storage = storage;
         this.#maxTime = maxTime;
     }
@@ -65,7 +65,7 @@ const createIdleTimer = async (storage) => {
     const storageMaxTime = await storage.get(STORAGE_MAXTIME_KEY);
     const maxTime = storageMaxTime ? storageMaxTime : DEFAULT_MAX_TIME;
 
-    return new IdleTimer({ storage, maxTime });
+    return new IdleTimer(storage, maxTime);
 };
 
 export default createIdleTimer;

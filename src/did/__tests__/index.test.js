@@ -11,11 +11,11 @@ beforeEach(() => {
 it('should have all specification methods', async () => {
     const did = createDid();
 
-    expect(typeof did.resolve).toEqual('function');
-    expect(typeof did.create).toEqual('function');
-    expect(typeof did.update).toEqual('function');
-    expect(typeof did.isPublicKeyValid).toEqual('function');
-    expect(typeof did.getMethods).toEqual('function');
+    expect(typeof did.resolve).toBe('function');
+    expect(typeof did.create).toBe('function');
+    expect(typeof did.update).toBe('function');
+    expect(typeof did.isPublicKeyValid).toBe('function');
+    expect(typeof did.getMethods).toBe('function');
 });
 
 describe('getMethods', () => {
@@ -33,7 +33,7 @@ describe('resolve', () => {
 
         expect(mockIpid.resolve).toHaveBeenCalledTimes(1);
         expect(mockIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if invalid did', async () => {
@@ -44,8 +44,8 @@ describe('resolve', () => {
         try {
             await did.resolve('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -57,15 +57,15 @@ describe('resolve', () => {
         try {
             await did.resolve('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, resolve: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -74,8 +74,8 @@ describe('resolve', () => {
         try {
             await did.resolve('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `resolve` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `resolve` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -83,14 +83,14 @@ describe('resolve', () => {
 describe('create', () => {
     it('should create successfully', async () => {
         const mockParams = { privateKey: 'mockPrivateKey', foo: 'bar' };
-        const mockOperations = jest.fn();
+        const mockOperations = () => {};
 
         const did = createDid();
         const document = await did.create('ipid', mockParams, mockOperations);
 
         expect(mockIpid.create).toHaveBeenCalledTimes(1);
         expect(mockIpid.create).toHaveBeenCalledWith(mockParams, mockOperations);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if method is not supported', async () => {
@@ -101,15 +101,15 @@ describe('create', () => {
         try {
             await did.create('fake');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, create: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -118,8 +118,8 @@ describe('create', () => {
         try {
             await did.create('ipid');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `create` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `create` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -127,14 +127,14 @@ describe('create', () => {
 describe('update', () => {
     it('should create successfully', async () => {
         const mockParams = { privateKey: 'mockPrivateKey', foo: 'bar' };
-        const mockOperations = jest.fn();
+        const mockOperations = () => {};
 
         const did = createDid();
         const document = await did.update('did:ipid:abcdef', mockParams, mockOperations);
 
         expect(mockIpid.update).toHaveBeenCalledTimes(1);
         expect(mockIpid.update).toHaveBeenCalledWith('did:ipid:abcdef', mockParams, mockOperations);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if invalid did', async () => {
@@ -145,8 +145,8 @@ describe('update', () => {
         try {
             await did.update('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -158,15 +158,15 @@ describe('update', () => {
         try {
             await did.update('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, update: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -175,8 +175,8 @@ describe('update', () => {
         try {
             await did.update('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `update` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `update` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -188,7 +188,7 @@ describe('isPublicKeyValid', () => {
         const did = createDid();
         const isValid = await did.isPublicKeyValid('did:ipid:abcdef', 'did:ipid:abcdef#123', mockOptions);
 
-        expect(isValid).toBeTruthy();
+        expect(isValid).toBe(true);
         expect(mockIpid.isPublicKeyValid).toHaveBeenCalledTimes(1);
         expect(mockIpid.isPublicKeyValid).toHaveBeenCalledWith('did:ipid:abcdef', 'did:ipid:abcdef#123', mockOptions);
     });
@@ -201,8 +201,8 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -214,15 +214,15 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, isPublicKeyValid: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -231,8 +231,8 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `isPublicKeyValid` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `isPublicKeyValid` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });

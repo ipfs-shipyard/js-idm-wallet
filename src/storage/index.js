@@ -1,11 +1,12 @@
 import createLocalStorage, { isSupported as isLocalStorageSupported } from './local-storage';
+import { UnavailableStorageError } from '../utils/errors';
 
 const createStorage = async () => {
     if (isLocalStorageSupported()) {
         return createLocalStorage();
     }
 
-    throw Object.assign(new Error('No compatible storage is available'), { code: 'NO_STORAGE' });
+    throw new UnavailableStorageError();
 };
 
 export default createStorage;
