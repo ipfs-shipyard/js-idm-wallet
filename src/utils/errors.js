@@ -2,9 +2,19 @@ class BaseError extends Error {
     constructor(message, code, props) {
         super(message);
 
-        Error.captureStackTrace(this, this.constructor);
+        Object.assign(this, {
+            ...props,
+            code,
+            name: this.constructor.name,
+        });
 
-        Object.assign(this, { code, ...props });
+        if (Error.captureStackTrace) {
+            Error.captureStackTrace(this, this.constructor);
+
+            return;
+        }
+
+        this.stack = (new Error(message)).stack;
     }
 }
 
@@ -60,9 +70,11 @@ export class UnlockMismatchError extends BaseError {
     }
 }
 
-export class UnavailableStorageError extends BaseError {
-    constructor() {
-        super('No compatible storage is available', 'NO_STORAGE');
+export class StorageError extends BaseError {
+    constructor(message, operation, type) {
+        message = message || 'Something went wrong during storage operations';
+
+        super(message, 'STORAGE_OPERATION', { operation, type });
     }
 }
 
@@ -87,5 +99,41 @@ export class LockEnabledError extends BaseError {
 export class LockDisabledError extends BaseError {
     constructor() {
         super('Lock must be enabled', 'LOCK_NOT_ENABLED');
+    }
+}
+
+export class UnknownIdentity extends BaseError {
+    constructor(did) {
+        super(`Unknown identity with: ${did}`, 'UNKNOWN_IDENTITY');
+    }
+}
+
+export class InvalidIdentityPropertyError extends BaseError {
+    constructor(property, value) {
+        super(`Invalid identity ${property}: ${value}`, 'INVALID_IDENTITY_PROPERTY');
+    }
+}
+
+export class UnableCreateIdentityError extends BaseError {
+    constructor(originalMessage, originalCode) {
+        super(`Unable to create identity: "${originalMessage}"`, 'UNABLE_CREATE_IDENTITY', { originalCode });
+    }
+}
+
+export class InvalidBackupPropertyError extends BaseError {
+    constructor(property, value) {
+        super(`Invalid backup ${property}: ${value}`, 'INVALID_BACKUP_PROPERTY');
+    }
+}
+
+export class InvalidDevicePropertyError extends BaseError {
+    constructor(property, value) {
+        super(`Invalid device ${property}: ${value}`, 'INVALID_DEVICE_PROPERTY');
+    }
+}
+
+export class InvalidProfilePropertyError extends BaseError {
+    constructor(property, value) {
+        super(`Invalid profile ${property}: ${value}`, 'INVALID_PROFILE_PROPERTY');
     }
 }

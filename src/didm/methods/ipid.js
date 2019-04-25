@@ -1,4 +1,5 @@
-import createDidIpid from 'did-ipid';
+import createDidIpid, { getDid } from 'did-ipid';
+import { getKeyPairFromMnemonic, getKeyPairFromSeed } from 'human-crypto-keys';
 
 class Ipid {
     static info = {
@@ -15,6 +16,12 @@ class Ipid {
         this.#ipfs = ipfs;
     }
 
+    async getDid(params) {
+        const masterPrivateKey = await this.#getMasterPrivateKey(params);
+
+        return getDid(masterPrivateKey);
+    }
+
     async resolve(did) {
         const didIpid = await this.#getDidIpid();
 
@@ -22,17 +29,17 @@ class Ipid {
     }
 
     async create(params, operations) {
-        const { privateKey } = { ...params };
+        const masterPrivateKey = await this.#getMasterPrivateKey(params);
         const didIpid = await this.#getDidIpid();
 
-        return didIpid.create(privateKey, operations);
+        return didIpid.create(masterPrivateKey, operations);
     }
 
     async update(did, params, operations) {
-        const { privateKey } = { ...params };
+        const masterPrivateKey = await this.#getMasterPrivateKey(params);
         const didIpid = await this.#getDidIpid();
 
-        return didIpid.update(privateKey, operations);
+        return didIpid.update(masterPrivateKey, operations);
     }
 
     async isPublicKeyValid(did, publicKeyId) {
@@ -50,6 +57,26 @@ class Ipid {
 
         return this.#didIpid;
     };
+
+    #getMasterPrivateKey = async (params) => {
+        const { masterPrivateKey, mnemonic, seed } = params;
+
+        if (masterPrivateKey) {
+            return masterPrivateKey;
+        }
+
+        if (seed) {
+            const { privateKey } = await getKeyPairFromSeed(seed, 'rsa');
+
+            return privateKey;
+        }
+
+        if (mnemonic) {
+            const { privateKey } = await getKeyPairFromMnemonic(mnemonic, 'rsa');
+
+            return privateKey;
+        }
+    }
 }
 
 const createIpid = (ipfs) => new Ipid(ipfs);

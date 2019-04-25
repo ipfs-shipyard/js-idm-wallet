@@ -1,8 +1,6 @@
 import createLocker from '../index';
-import createSecret from '../secret';
 import createLocks from '../locks';
 import createIdleTimer from '../idle-timer';
-import { LockerLockedError } from '../../utils/errors';
 
 const mockStorage = {};
 
@@ -36,7 +34,6 @@ const mockLocksPristine = {
 };
 
 jest.mock('../idle-timer', () => jest.fn(() => mockIdleTimer));
-jest.mock('../secret', () => jest.fn(() => mockSecret));
 jest.mock('../locks', () => jest.fn(() => mockLocks));
 
 beforeEach(() => {
@@ -47,10 +44,7 @@ describe('factory', () => {
     it('should create locker successfully if pristine', async () => {
         createLocks.mockImplementationOnce(() => mockLocksPristine);
 
-        const locker = await createLocker(mockStorage);
-
-        expect(createSecret).toHaveBeenCalledTimes(1);
-        expect(createSecret).toHaveBeenCalledWith(new LockerLockedError());
+        const locker = await createLocker(mockStorage, mockSecret);
 
         expect(createLocks).toHaveBeenCalledTimes(1);
         expect(createLocks).toHaveBeenCalledWith(mockStorage, mockSecret, 'passphrase');
@@ -77,10 +71,7 @@ describe('factory', () => {
     });
 
     it('should create locker successfully if not pristine', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
-
-        expect(createSecret).toHaveBeenCalledTimes(1);
-        expect(createSecret).toHaveBeenCalledWith(new LockerLockedError());
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(createLocks).toHaveBeenCalledTimes(1);
         expect(createLocks).toHaveBeenCalledWith(mockStorage, mockSecret, 'passphrase');
@@ -107,13 +98,13 @@ describe('factory', () => {
     });
 
     it('should throw if lock is unknown', async () => {
-        await expect(createLocker(mockStorage, 'foobar')).rejects.toThrow('There\'s no lock of type `foobar`');
+        await expect(createLocker(mockStorage, mockSecret, 'foobar')).rejects.toThrow('There\'s no lock of type `foobar`');
     });
 });
 
 describe('idleTimer', () => {
     it('should return idle timer', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.idleTimer).toBe(mockIdleTimer);
     });
@@ -132,7 +123,7 @@ describe('masterLock', () => {
             ...mockLocks,
         }));
 
-        const locker = await createLocker(mockStorage, 'foo');
+        const locker = await createLocker(mockStorage, mockSecret, 'foo');
 
         expect(locker.masterLock).toBe(mockLock);
     });
@@ -142,13 +133,13 @@ describe('isPristine', () => {
     it('should return true', async () => {
         createLocks.mockImplementationOnce(() => mockLocksPristine);
 
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.isPristine()).toBe(true);
     });
 
     it('should return false', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.isPristine()).toBe(false);
     });
@@ -156,7 +147,7 @@ describe('isPristine', () => {
 
 describe('isLocked', () => {
     it('should return true', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.isLocked()).toBe(true);
     });
@@ -164,7 +155,7 @@ describe('isLocked', () => {
     it('should return false', async () => {
         mockSecret.has.mockImplementationOnce(() => true);
 
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.isLocked()).toBe(false);
     });
@@ -172,7 +163,7 @@ describe('isLocked', () => {
 
 describe('getSecret', () => {
     it('should return secret', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.getSecret()).toBe('a1b2c3');
         expect(mockSecret.get).toHaveBeenCalledTimes(1);
@@ -181,13 +172,13 @@ describe('getSecret', () => {
 
 describe('getLock', () => {
     it('should return lock successfully', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(locker.getLock('passphrase')).toBe(mockLocks.passphrase);
     });
 
     it('should throw if lock is unknown', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(() => locker.getLock('foobar')).toThrow('There\'s no lock of type `foobar`');
     });
@@ -195,7 +186,7 @@ describe('getLock', () => {
 
 describe('lock', () => {
     it('should unset secret', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         locker.lock();
 
@@ -205,7 +196,7 @@ describe('lock', () => {
     it('should fail if pristine', async () => {
         createLocks.mockImplementationOnce(() => mockLocksPristine);
 
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
 
         expect(() => locker.lock()).toThrow('Can\'t lock until you configure the master lock');
         expect(mockSecret.unset).toHaveBeenCalledTimes(0);
@@ -214,7 +205,7 @@ describe('lock', () => {
 
 describe('onLockedChange', () => {
     it('should dispatch to listeners on lock change', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
         const lockerHandleSecretDefinedChange = mockSecret.onDefinedChange.mock.calls[0][0];
         const listener = jest.fn();
 
@@ -243,7 +234,7 @@ describe('handleIdleTimerTimeout', () => {
     it('should handle idle timer timeout if pristine', async () => {
         createLocks.mockImplementationOnce(() => mockLocksPristine);
 
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
         const lockerHandleIdleTimerTimeout = mockIdleTimer.onTimeout.mock.calls[0][0];
 
         locker.lock = jest.fn();
@@ -253,7 +244,7 @@ describe('handleIdleTimerTimeout', () => {
     });
 
     it('should handle idle timer timeout if not pristine', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
         const lockerHandleIdleTimerTimeout = mockIdleTimer.onTimeout.mock.calls[0][0];
 
         locker.lock = jest.fn();
@@ -266,7 +257,7 @@ describe('handleIdleTimerTimeout', () => {
 
 describe('handleMasterLockEnabledChange', () => {
     it('should handle master lock enable change', async () => {
-        const locker = await createLocker(mockStorage, 'passphrase');
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
         const lock = locker.getLock('passphrase');
 
         const lockerhandleMasterLockEnabledChange = lock.onEnabledChange.mock.calls[0][0];

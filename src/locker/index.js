@@ -1,8 +1,7 @@
 import signal from 'pico-signals';
 import createLocks from './locks';
 import createIdleTimer from './idle-timer';
-import createSecret from './secret';
-import { LockerLockedError, PristineError, UnknownLockTypeError } from '../utils/errors';
+import { PristineError, UnknownLockTypeError } from '../utils/errors';
 
 class Locker {
     #locks;
@@ -95,8 +94,7 @@ class Locker {
     }
 }
 
-const createLocker = async (storage, masterLockType = 'passphrase') => {
-    const secret = createSecret(new LockerLockedError());
+const createLocker = async (storage, secret, masterLockType = 'passphrase') => {
     const idleTimer = await createIdleTimer(storage);
     const locks = await createLocks(storage, secret, masterLockType);
     const masterLock = locks[masterLockType];

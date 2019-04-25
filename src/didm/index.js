@@ -1,15 +1,22 @@
 import createIpid from './methods/ipid';
-import { UnsupportedDidMethodError, UnsupportedDidMethodPurposeError, InvalidDidError } from '../utils/errors';
+import { parseDid } from '../utils';
+import { UnsupportedDidMethodError, UnsupportedDidMethodPurposeError } from '../utils/errors';
 
-class Did {
+class Didm {
     #methods;
 
     constructor(methods) {
         this.#methods = methods;
     }
 
+    async getDid(method, params) {
+        this.#assertSupport(method, 'getDid');
+
+        return this.#methods[method].getDid(params);
+    }
+
     async resolve(did) {
-        const { method } = this.#parseDid(did);
+        const { method } = parseDid(did);
 
         this.#assertSupport(method, 'resolve');
 
@@ -23,7 +30,7 @@ class Did {
     }
 
     async update(did, params, operations) {
-        const { method } = this.#parseDid(did);
+        const { method } = parseDid(did);
 
         this.#assertSupport(method, 'update');
 
@@ -31,7 +38,7 @@ class Did {
     }
 
     async isPublicKeyValid(did, publicKeyId, options) {
-        const { method } = this.#parseDid(did);
+        const { method } = parseDid(did);
 
         this.#assertSupport(method, 'isPublicKeyValid');
 
@@ -40,6 +47,16 @@ class Did {
 
     getMethods() {
         return Object.values(this.#methods).map((method) => method.constructor.info);
+    }
+
+    isSupported(method, purpose) {
+        try {
+            this.#assertSupport(method, purpose);
+
+            return true;
+        } catch (err) {
+            return false;
+        }
     }
 
     #assertSupport = (method, purpose) => {
@@ -51,24 +68,14 @@ class Did {
             throw new UnsupportedDidMethodPurposeError(method, purpose);
         }
     }
-
-    #parseDid = (did) => {
-        const match = did.match(/did:(\w+):(\w+).*/);
-
-        if (!match) {
-            throw new InvalidDidError(did);
-        }
-
-        return { method: match[1], identifier: match[2] };
-    };
 }
 
-const createDid = (ipfs) => {
+const createDidm = (ipfs) => {
     const methods = {
         ipid: createIpid(ipfs),
     };
 
-    return new Did(methods);
+    return new Didm(methods);
 };
 
-export default createDid;
+export default createDidm;

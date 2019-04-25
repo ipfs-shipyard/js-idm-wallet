@@ -1,4 +1,5 @@
 import signal from 'pico-signals';
+import { LockerLockedError } from '../utils/errors';
 
 const SECRET_LENGTH = 32;
 
@@ -8,7 +9,7 @@ class Secret {
     #onDefinedChange = signal();
 
     constructor(undefinedError) {
-        this.#undefinedError = undefinedError;
+        this.#undefinedError = undefinedError || new LockerLockedError();
     }
 
     has() {

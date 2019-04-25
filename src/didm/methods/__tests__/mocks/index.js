@@ -6,6 +6,7 @@ export const mockDocument = {
 };
 
 export const mockDidIpid = {
+    getDid: jest.fn(() => 'did:ipid:QmUTE4cxTxihntPEFqTprgbqyyS9YRaRcC8FXp6PACEjFG'),
     resolve: jest.fn(() => mockDocument),
     create: jest.fn((privateKey, operations) => {
         operations();

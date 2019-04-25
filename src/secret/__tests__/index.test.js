@@ -1,4 +1,4 @@
-import createSecret from '../secret';
+import createSecret from '../index';
 
 const undefinedError = new Error('Not defined');
 

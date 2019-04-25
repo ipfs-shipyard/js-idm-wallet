@@ -2,12 +2,16 @@ import { mockDocument, mockDidIpid } from './mocks';
 import createDidIpid from 'did-ipid';
 import createIpid from '../ipid';
 
-jest.mock('did-ipid', () => jest.fn((ipfs) => ({
-    ipfs,
-    resolve: mockDidIpid.resolve,
-    create: mockDidIpid.create,
-    update: mockDidIpid.update,
-})));
+jest.mock('did-ipid', () => ({
+    __esModule: true,
+    default: jest.fn((ipfs) => ({
+        ipfs,
+        resolve: mockDidIpid.resolve,
+        create: mockDidIpid.create,
+        update: mockDidIpid.update,
+    })),
+    getDid: mockDidIpid.getDid,
+}));
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -16,6 +20,7 @@ beforeEach(() => {
 it('should have all supported methods', async () => {
     const ipid = createIpid();
 
+    expect(typeof ipid.getDid).toBe('function');
     expect(typeof ipid.resolve).toBe('function');
     expect(typeof ipid.create).toBe('function');
     expect(typeof ipid.update).toBe('function');
@@ -25,6 +30,17 @@ it('should have all supported methods', async () => {
         description: 'The Interplanetary Identifiers DID method (IPID) supports DIDs on the public and private Interplanetary File System (IPFS) networks.',
         homepageUrl: 'https://did-ipid.github.io/ipid-did-method/',
         icons: [],
+    });
+});
+
+describe('getDid', () => {
+    it('should get did successfully', async () => {
+        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
+        const ipid = createIpid();
+
+        await ipid.getDid({ masterKey: 'mockPrivateKey' });
+
+        expect(mockDidIpid.getDid).toHaveBeenCalledWith(mockParams.masterKey);
     });
 });
 
@@ -51,12 +67,12 @@ describe('resolve', () => {
 describe('create', () => {
     it('should create successfully', async () => {
         const mockOperations = jest.fn();
-        const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
+        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
         const document = await ipid.create(mockParams, mockOperations);
 
-        expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+        expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
         expect(document).toBe(mockDocument);
     });
@@ -67,14 +83,14 @@ describe('create', () => {
         mockDidIpid.create.mockImplementationOnce(() => { throw new Error('bar'); });
 
         const mockOperations = jest.fn();
-        const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
+        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
 
         try {
             await ipid.create(mockParams, mockOperations);
         } catch (err) {
-            expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+            expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
             expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }
@@ -84,13 +100,13 @@ describe('create', () => {
 describe('update', () => {
     it('should update successfully', async () => {
         const mockOperations = jest.fn();
-        const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
+        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
         const ipid = createIpid();
         const document = await ipid.update(mockDid, mockParams, mockOperations);
 
-        expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+        expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
         expect(document).toBe(mockDocument);
     });
@@ -101,7 +117,7 @@ describe('update', () => {
         mockDidIpid.update.mockImplementationOnce(() => { throw new Error('bar'); });
 
         const mockOperations = jest.fn();
-        const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
+        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
         const ipid = createIpid();
@@ -109,7 +125,7 @@ describe('update', () => {
         try {
             await ipid.update(mockDid, mockParams, mockOperations);
         } catch (err) {
-            expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+            expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
             expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }

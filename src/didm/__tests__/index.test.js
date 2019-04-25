@@ -1,6 +1,6 @@
 import createIpid from '../methods/ipid';
 import createDid from '../index';
-import { mockDocument, mockIpid } from './mocks';
+import { mockDid, mockDocument, mockIpid } from './mocks';
 
 jest.mock('../methods/ipid', () => jest.fn(() => mockIpid));
 
@@ -23,6 +23,31 @@ describe('getMethods', () => {
         const did = createDid();
 
         expect(did.getMethods()).toMatchSnapshot();
+    });
+});
+
+describe('isSupported', () => {
+    it('should return true if did method supports operation', () => {
+        const did = createDid();
+
+        expect(did.isSupported('ipid', 'create')).toBe(true);
+    });
+
+    it('should return false if did method does not supports operation', () => {
+        const did = createDid();
+
+        expect(did.isSupported('ipid', 'clear')).toBe(false);
+    });
+});
+
+describe('getDid', () => {
+    it('should return the correspondent did', async () => {
+        const did = createDid();
+
+        await expect(did.getDid('ipid', { foo: 'bar' })).resolves.toBe(mockDid);
+
+        expect(mockIpid.getDid).toHaveBeenCalledTimes(1);
+        expect(mockIpid.getDid).toHaveBeenCalledWith({ foo: 'bar' });
     });
 });
 
