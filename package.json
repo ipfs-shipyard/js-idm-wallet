@@ -15,7 +15,12 @@
     "wallet",
     "js",
     "javascript",
-    "sdk"
+    "sdk",
+    "identity",
+    "did",
+    "verifiable",
+    "credentials",
+    "decentralized"
   ],
   "bugs": {
     "url": "https://github.com/ipfs-shipyard/js-idm-wallet/issues"
