@@ -50,7 +50,7 @@ describe('resolve', () => {
 
 describe('create', () => {
     it('should create successfully', async () => {
-        const mockOperations = jest.fn(() => {});
+        const mockOperations = jest.fn();
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
@@ -66,7 +66,7 @@ describe('create', () => {
 
         mockDidIpid.create.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        const mockOperations = jest.fn(() => {});
+        const mockOperations = jest.fn();
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
@@ -83,7 +83,7 @@ describe('create', () => {
 
 describe('update', () => {
     it('should update successfully', async () => {
-        const mockOperations = jest.fn(() => {});
+        const mockOperations = jest.fn();
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
@@ -100,7 +100,7 @@ describe('update', () => {
 
         mockDidIpid.update.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        const mockOperations = jest.fn(() => {});
+        const mockOperations = jest.fn();
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
