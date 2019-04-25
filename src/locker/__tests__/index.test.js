@@ -105,6 +105,10 @@ describe('factory', () => {
         expect(typeof locker.idleTimer).toBe('object');
         expect(typeof locker.masterLock).toBe('object');
     });
+
+    it('should throw if lock is unknown', async () => {
+        await expect(createLocker(mockStorage, 'foobar')).rejects.toThrow('There\'s no lock of type `foobar`');
+    });
 });
 
 describe('idleTimer', () => {
@@ -183,9 +187,9 @@ describe('getLock', () => {
     });
 
     it('should throw if lock is unknown', async () => {
-        createLocks.mockImplementationOnce(() => mockLocksPristine);
+        const locker = await createLocker(mockStorage, 'passphrase');
 
-        await expect(createLocker(mockStorage, 'foobar')).rejects.toThrow('There\'s no lock of type `foobar`');
+        expect(() => locker.getLock('foobar')).toThrow('There\'s no lock of type `foobar`');
     });
 });
 
