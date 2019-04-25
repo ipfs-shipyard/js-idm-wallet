@@ -21,7 +21,7 @@ beforeEach(() => {
 });
 
 it('should have all specification methods', async () => {
-    const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+    const lock = await createPassphraseLock(mockStorage, mockSecret);
 
     expect(typeof lock.isMaster).toBe('function');
     expect(typeof lock.isEnabled).toBe('function');
@@ -35,13 +35,13 @@ it('should have all specification methods', async () => {
 
 describe('isMaster', () => {
     it('should return true', async () => {
-        const lock = await createPassphraseLock({ storage: mockStorage, master: true });
+        const lock = await createPassphraseLock(mockStorage, mockSecret, true);
 
         expect(lock.isMaster()).toBeTruthy();
     });
 
     it('should return false', async () => {
-        const lock = await createPassphraseLock({ storage: mockStorage });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         expect(lock.isMaster()).toBe(false);
     });
@@ -50,14 +50,14 @@ describe('isMaster', () => {
 describe('isEnabled', () => {
     it('should return true if enabled in the storage', async () => {
         const mockStorage = { has: jest.fn(() => true) };
-        const lock = await createPassphraseLock({ storage: mockStorage, master: false });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         expect(lock.isEnabled()).toBeTruthy();
         expect(mockStorage.has).toHaveBeenCalledTimes(1);
     });
 
     it('should return false if not enabled in the storage', async () => {
-        const lock = await createPassphraseLock({ storage: mockStorage });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         expect(lock.isEnabled()).toBe(false);
         expect(mockStorage.has).toHaveBeenCalledTimes(1);
@@ -71,7 +71,7 @@ describe('enable', () => {
             encrypt: jest.fn(() => enableTest.success.crypto.subtle.encrypt.result),
         };
 
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await lock.enable('walletPassphrase');
 
@@ -87,14 +87,14 @@ describe('enable', () => {
 
     it('should fail if already enabled', async () => {
         const mockStorage = { has: () => true };
-        const lock = await createPassphraseLock({ secret: mockSecret, storage: mockStorage });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.enable('walletPassphrase')).rejects.toThrow('Lock must be disabled');
         expect(lock.isEnabled()).toBeTruthy();
     });
 
     it('should fail if passphrase is too weak', async () => {
-        const lock = await createPassphraseLock({ secret: mockSecret, storage: mockStorage });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.enable('foo')).rejects.toThrow('Passphrase is too weak');
         expect(lock.isEnabled()).toBe(false);
@@ -102,7 +102,7 @@ describe('enable', () => {
 
     it('should fail if no secret available', async () => {
         const mockSecret = { get: () => { throw new Error('No secret available'); } };
-        const lock = await createPassphraseLock({ secret: mockSecret, storage: mockStorage });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.enable('walletPassphrase')).rejects.toThrow('No secret available');
         expect(lock.isEnabled()).toBe(false);
@@ -112,7 +112,7 @@ describe('enable', () => {
 describe('disable', () => {
     it('should disable successfully', async () => {
         const mockStorage = { has: () => true, remove: jest.fn() };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await lock.disable();
 
@@ -122,7 +122,7 @@ describe('disable', () => {
     });
 
     it('should fail if not enabled', async () => {
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.disable()).rejects.toThrow('Lock must be enabled');
         expect(lock.isEnabled()).toBe(false);
@@ -130,7 +130,7 @@ describe('disable', () => {
 
     it('should fail if master', async () => {
         const mockStorage = { has: () => true };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret, master: true });
+        const lock = await createPassphraseLock(mockStorage, mockSecret, true);
 
         await expect(lock.disable()).rejects.toThrow('Invalid master lock operation');
         expect(lock.isEnabled()).toBeTruthy();
@@ -145,7 +145,7 @@ describe('unlock', () => {
         };
 
         const mockStorage = { has: () => true, get: jest.fn(() => storedPassphrase) };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await lock.unlock('walletPassphrase');
 
@@ -159,14 +159,14 @@ describe('unlock', () => {
 
     it('should fail if no derived key stored', async () => {
         const mockStorage = { has: () => true, get: jest.fn(() => ({ ...storedPassphrase, derivedKey: undefined })) };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.unlock('walletPassphrase')).rejects.toThrow();
     });
 
     it('should fail if no encrypted secret stored', async () => {
         const mockStorage = { has: () => true, get: () => ({ ...storedPassphrase, encryptedSecret: undefined }) };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.unlock('walletPassphrase')).rejects.toThrow();
     });
@@ -178,13 +178,13 @@ describe('unlock', () => {
         };
 
         const mockStorage = { has: () => true, get: () => storedPassphrase };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.unlock('walletPassphrase')).rejects.toThrow('Passphrase is invalid');
     });
 
     it('should fail if not enabled', async () => {
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.disable()).rejects.toThrow('Lock must be enabled');
         expect(lock.isEnabled()).toBe(false);
@@ -206,7 +206,7 @@ describe('update', () => {
             set: jest.fn(() => { stored = storedPassphrase; }),
         };
 
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret, master: true });
+        const lock = await createPassphraseLock(mockStorage, mockSecret, true);
 
         await lock.update('passphraseWallet', 'walletPassphrase');
 
@@ -237,7 +237,7 @@ describe('update', () => {
             set: jest.fn(() => { stored = storedPassphrase; }),
         };
 
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await lock.update('passphraseWallet', 'walletPassphrase');
 
@@ -255,14 +255,14 @@ describe('update', () => {
 
     it('should fail if not enabled', async () => {
         const mockStorage = { has: () => false };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.update('passphraseWallet', 'walletPassphrase')).rejects.toThrow('Lock must be enabled');
     });
 
     it('should fail if new passphrase is too weak', async () => {
         const mockStorage = { has: () => true };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.update('123', 'walletPassphrase')).rejects.toThrow('Passphrase is too weak');
     });
@@ -274,7 +274,7 @@ describe('update', () => {
         };
 
         const mockStorage = { has: () => true, get: () => storedPassphrase };
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret, master: true });
+        const lock = await createPassphraseLock(mockStorage, mockSecret, true);
 
         await expect(lock.update('passphraseWallet', 'fooBar')).rejects.toThrow('Passphrase is invalid');
     });
@@ -291,7 +291,7 @@ describe('onEnabledChange', () => {
             encrypt: jest.fn(() => enableTest.success.crypto.subtle.encrypt.result),
         };
 
-        const lock = await createPassphraseLock({ storage: mockStorage, secret: mockSecret });
+        const lock = await createPassphraseLock(mockStorage, mockSecret);
         const removeMethod = lock.onEnabledChange(handleEnabledChange2);
 
         lock.onEnabledChange(handleEnabledChange);

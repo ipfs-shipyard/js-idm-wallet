@@ -7,7 +7,7 @@ class Secret {
     #undefinedError;
     #onDefinedChange = signal();
 
-    constructor({ undefinedError }) {
+    constructor(undefinedError) {
         this.#undefinedError = undefinedError;
     }
 
@@ -49,6 +49,6 @@ class Secret {
     }
 }
 
-const createSecret = (undefinedError) => new Secret({ undefinedError });
+const createSecret = (undefinedError) => new Secret(undefinedError);
 
 export default createSecret;
