@@ -11,11 +11,11 @@ beforeEach(() => {
 it('should have all specification methods', async () => {
     const did = createDid();
 
-    expect(typeof did.resolve).toEqual('function');
-    expect(typeof did.create).toEqual('function');
-    expect(typeof did.update).toEqual('function');
-    expect(typeof did.isPublicKeyValid).toEqual('function');
-    expect(typeof did.getMethods).toEqual('function');
+    expect(typeof did.resolve).toBe('function');
+    expect(typeof did.create).toBe('function');
+    expect(typeof did.update).toBe('function');
+    expect(typeof did.isPublicKeyValid).toBe('function');
+    expect(typeof did.getMethods).toBe('function');
 });
 
 describe('getMethods', () => {
@@ -44,8 +44,8 @@ describe('resolve', () => {
         try {
             await did.resolve('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -57,8 +57,8 @@ describe('resolve', () => {
         try {
             await did.resolve('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
@@ -74,8 +74,8 @@ describe('resolve', () => {
         try {
             await did.resolve('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `resolve` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `resolve` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -101,8 +101,8 @@ describe('create', () => {
         try {
             await did.create('fake');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
@@ -118,8 +118,8 @@ describe('create', () => {
         try {
             await did.create('ipid');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `create` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `create` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -145,8 +145,8 @@ describe('update', () => {
         try {
             await did.update('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -158,8 +158,8 @@ describe('update', () => {
         try {
             await did.update('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
@@ -175,8 +175,8 @@ describe('update', () => {
         try {
             await did.update('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `update` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `update` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });
@@ -188,7 +188,7 @@ describe('isPublicKeyValid', () => {
         const did = createDid();
         const isValid = await did.isPublicKeyValid('did:ipid:abcdef', 'did:ipid:abcdef#123', mockOptions);
 
-        expect(isValid).toBeTruthy();
+        expect(isValid).toBe(true);
         expect(mockIpid.isPublicKeyValid).toHaveBeenCalledTimes(1);
         expect(mockIpid.isPublicKeyValid).toHaveBeenCalledWith('did:ipid:abcdef', 'did:ipid:abcdef#123', mockOptions);
     });
@@ -201,8 +201,8 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did#abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Invalid DID: did#abcdef');
-            expect(err.code).toEqual('INVALID_DID');
+            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.code).toBe('INVALID_DID');
         }
     });
 
@@ -214,8 +214,8 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did:fake:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Did method `fake` is not supported');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD');
+            expect(err.message).toBe('Did method `fake` is not supported');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD');
         }
     });
 
@@ -231,8 +231,8 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did:ipid:abcdef');
         } catch (err) {
-            expect(err.message).toEqual('Purpose `isPublicKeyValid` is not currently supported for `ipid`');
-            expect(err.code).toEqual('UNSUPPORTED_DID_METHOD_PURPOSE');
+            expect(err.message).toBe('Purpose `isPublicKeyValid` is not currently supported for `ipid`');
+            expect(err.code).toBe('UNSUPPORTED_DID_METHOD_PURPOSE');
         }
     });
 });

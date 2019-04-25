@@ -204,9 +204,10 @@ class PassphraseLock {
     }
 }
 
-const isEnabled = async (storage) => storage.has(STORAGE_KEY);
+const createPassphraseLock = async ({ storage, secret, master = false }) => {
+    const enabled = await storage.has(STORAGE_KEY);
 
-const createPassphraseLock = (params) => new PassphraseLock({ ...params });
+    return new PassphraseLock({ storage, secret, master, enabled });
+};
 
 export default createPassphraseLock;
-export { isEnabled };

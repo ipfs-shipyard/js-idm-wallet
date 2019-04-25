@@ -59,15 +59,15 @@ describe('factory', () => {
 
         expect(mockSecret.onDefinedChange).toHaveBeenCalledTimes(1);
 
-        expect(typeof locker.isPristine).toEqual('function');
-        expect(typeof locker.isLocked).toEqual('function');
-        expect(typeof locker.getSecret).toEqual('function');
-        expect(typeof locker.getLock).toEqual('function');
-        expect(typeof locker.lock).toEqual('function');
-        expect(typeof locker.onLockedChange).toEqual('function');
+        expect(typeof locker.isPristine).toBe('function');
+        expect(typeof locker.isLocked).toBe('function');
+        expect(typeof locker.getSecret).toBe('function');
+        expect(typeof locker.getLock).toBe('function');
+        expect(typeof locker.lock).toBe('function');
+        expect(typeof locker.onLockedChange).toBe('function');
 
-        expect(typeof locker.idleTimer).toEqual('object');
-        expect(typeof locker.masterLock).toEqual('object');
+        expect(typeof locker.idleTimer).toBe('object');
+        expect(typeof locker.masterLock).toBe('object');
     });
 
     it('should create locker successfully if not pristine', async () => {
@@ -91,15 +91,15 @@ describe('factory', () => {
 
         expect(mockSecret.onDefinedChange).toHaveBeenCalledTimes(1);
 
-        expect(typeof locker.isPristine).toEqual('function');
-        expect(typeof locker.isLocked).toEqual('function');
-        expect(typeof locker.getSecret).toEqual('function');
-        expect(typeof locker.getLock).toEqual('function');
-        expect(typeof locker.lock).toEqual('function');
-        expect(typeof locker.onLockedChange).toEqual('function');
+        expect(typeof locker.isPristine).toBe('function');
+        expect(typeof locker.isLocked).toBe('function');
+        expect(typeof locker.getSecret).toBe('function');
+        expect(typeof locker.getLock).toBe('function');
+        expect(typeof locker.lock).toBe('function');
+        expect(typeof locker.onLockedChange).toBe('function');
 
-        expect(typeof locker.idleTimer).toEqual('object');
-        expect(typeof locker.masterLock).toEqual('object');
+        expect(typeof locker.idleTimer).toBe('object');
+        expect(typeof locker.masterLock).toBe('object');
     });
 });
 
@@ -125,7 +125,7 @@ describe('isPristine', () => {
     it('should return true', async () => {
         const locker = await createLocker(mockStorage, 'passphrase');
 
-        expect(locker.isPristine()).toBeTruthy();
+        expect(locker.isPristine()).toBe(true);
     });
 
     it('should return false', async () => {
@@ -133,7 +133,7 @@ describe('isPristine', () => {
 
         const locker = await createLocker(mockStorage, 'passphrase');
 
-        expect(locker.isPristine()).toBeFalsy();
+        expect(locker.isPristine()).toBe(false);
     });
 });
 
@@ -141,7 +141,7 @@ describe('isLocked', () => {
     it('should return true', async () => {
         const locker = await createLocker(mockStorage, 'passphrase');
 
-        expect(locker.isLocked()).toBeTruthy();
+        expect(locker.isLocked()).toBe(true);
     });
 
     it('should return false', async () => {
@@ -149,7 +149,7 @@ describe('isLocked', () => {
 
         const locker = await createLocker(mockStorage, 'passphrase');
 
-        expect(locker.isLocked()).toBeFalsy();
+        expect(locker.isLocked()).toBe(false);
     });
 });
 
@@ -157,7 +157,7 @@ describe('getSecret', () => {
     it('should return secret', async () => {
         const locker = await createLocker(mockStorage, 'passphrase');
 
-        expect(locker.getSecret()).toEqual('a1b2c3');
+        expect(locker.getSecret()).toBe('a1b2c3');
         expect(mockSecret.get).toHaveBeenCalledTimes(1);
     });
 });
@@ -261,11 +261,11 @@ describe('handleMasterLockEnabledChange', () => {
         const lockerhandleMasterLockEnabledChange = lock.onEnabledChange.mock.calls[0][0];
 
         lockerhandleMasterLockEnabledChange(false);
-        expect(locker.isPristine()).toBeTruthy();
+        expect(locker.isPristine()).toBe(true);
         expect(mockIdleTimer.restart).toBeCalledTimes(1);
 
         lockerhandleMasterLockEnabledChange(true);
-        expect(locker.isPristine()).toBeFalsy();
+        expect(locker.isPristine()).toBe(false);
         expect(mockIdleTimer.restart).toBeCalledTimes(2);
     });
 });

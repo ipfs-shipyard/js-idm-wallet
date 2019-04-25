@@ -25,23 +25,23 @@ it('should create wallet successfully', async () => {
 it('should throw if storage creation fails', async () => {
     createStorage.mockImplementationOnce(() => { throw new Error('foo'); });
 
-    expect(createWallet()).rejects.toThrow('foo');
+    await expect(createWallet()).rejects.toThrow('foo');
 });
 
 it('should throw if locker creation fails', async () => {
     createLocker.mockImplementationOnce(() => { throw new Error('bar'); });
 
-    expect(createWallet()).rejects.toThrow('bar');
+    await expect(createWallet()).rejects.toThrow('bar');
 });
 
 it('should throw if did creation fails', async () => {
     createDid.mockImplementationOnce(() => { throw new Error('biz'); });
 
-    expect(createWallet()).rejects.toThrow('biz');
+    await expect(createWallet()).rejects.toThrow('biz');
 });
 
 it('should throw if ipfs node creation fails', async () => {
-    expect.assertions(2);
+    expect.assertions(1);
 
     Ipfs.mockImplementationOnce(jest.fn(() => ({
         on: (state, callback) => { state === 'error' && callback('foobar'); },
@@ -50,7 +50,7 @@ it('should throw if ipfs node creation fails', async () => {
     try {
         await createWallet();
     } catch (err) {
-        expect(err).toEqual('foobar');
+        expect(err).toBe('foobar');
     }
 });
 
@@ -70,8 +70,8 @@ it('should fail if provided ipfs node is not online', async () => {
     try {
         await createWallet({ ipfs: mockIpfsNode });
     } catch (err) {
-        expect(err.message).toEqual('IPFS node is unavailable.');
-        expect(err.code).toEqual('IPFS_UNAVAILABLE');
+        expect(err.message).toBe('IPFS node is unavailable.');
+        expect(err.code).toBe('IPFS_UNAVAILABLE');
     }
 });
 

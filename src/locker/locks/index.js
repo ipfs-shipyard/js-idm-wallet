@@ -1,26 +1,16 @@
 import pProps from 'p-props';
-import createPassphrase, { isEnabled as isPassphraseEnabled } from './passphrase';
-
-const types = {
-    passphrase: {
-        create: createPassphrase,
-        isEnabled: isPassphraseEnabled,
-    },
-};
+import createPassphrase from './passphrase';
 
 const createLocks = async (storage, secret, master = 'passphrase') => {
-    const enabled = await pProps({
-        passphrase: types.passphrase.isEnabled(storage),
+    const passphrase = createPassphrase({
+        storage,
+        secret,
+        master: master === 'passphrase',
     });
 
-    return {
-        passphrase: createPassphrase({
-            storage,
-            secret,
-            master: master === 'passphrase',
-            enabled: !!enabled.passphrase,
-        }),
-    };
+    return pProps({
+        passphrase,
+    });
 };
 
 export default createLocks;

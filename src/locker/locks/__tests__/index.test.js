@@ -8,8 +8,8 @@ describe('createLocks', () => {
 
         expect(Object.keys(locks)).toEqual(['passphrase']);
 
-        expect(locks.passphrase.isMaster()).toBeTruthy();
-        expect(locks.passphrase.isEnabled()).toBeTruthy();
+        expect(locks.passphrase.isMaster()).toBe(true);
+        expect(locks.passphrase.isEnabled()).toBe(true);
     });
 
     it('should create all lock types with non enabled types', async () => {
@@ -19,13 +19,13 @@ describe('createLocks', () => {
 
         expect(Object.keys(locks)).toEqual(['passphrase']);
 
-        expect(locks.passphrase.isMaster()).toBeFalsy();
-        expect(locks.passphrase.isEnabled()).toBeFalsy();
+        expect(locks.passphrase.isMaster()).toBe(false);
+        expect(locks.passphrase.isEnabled()).toBe(false);
     });
 
-    it('should fail if one of the isEnabled methods rejects', () => {
+    it('should fail if one of the isEnabled methods rejects', async () => {
         const storage = { has: jest.fn(() => Promise.reject(new Error('foo'))) };
 
-        expect(createLocks(storage, {}, 'passphrase')).rejects.toEqual(new Error('foo'));
+        await expect(createLocks(storage, {}, 'passphrase')).rejects.toEqual(new Error('foo'));
     });
 });
