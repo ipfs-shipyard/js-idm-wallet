@@ -33,7 +33,7 @@ describe('resolve', () => {
 
         expect(mockIpid.resolve).toHaveBeenCalledTimes(1);
         expect(mockIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if invalid did', async () => {
@@ -65,7 +65,7 @@ describe('resolve', () => {
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, resolve: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -83,14 +83,14 @@ describe('resolve', () => {
 describe('create', () => {
     it('should create successfully', async () => {
         const mockParams = { privateKey: 'mockPrivateKey', foo: 'bar' };
-        const mockOperations = jest.fn();
+        const mockOperations = () => {};
 
         const did = createDid();
         const document = await did.create('ipid', mockParams, mockOperations);
 
         expect(mockIpid.create).toHaveBeenCalledTimes(1);
         expect(mockIpid.create).toHaveBeenCalledWith(mockParams, mockOperations);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if method is not supported', async () => {
@@ -109,7 +109,7 @@ describe('create', () => {
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, create: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -127,14 +127,14 @@ describe('create', () => {
 describe('update', () => {
     it('should create successfully', async () => {
         const mockParams = { privateKey: 'mockPrivateKey', foo: 'bar' };
-        const mockOperations = jest.fn();
+        const mockOperations = () => {};
 
         const did = createDid();
         const document = await did.update('did:ipid:abcdef', mockParams, mockOperations);
 
         expect(mockIpid.update).toHaveBeenCalledTimes(1);
         expect(mockIpid.update).toHaveBeenCalledWith('did:ipid:abcdef', mockParams, mockOperations);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if invalid did', async () => {
@@ -166,7 +166,7 @@ describe('update', () => {
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, update: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 
@@ -222,7 +222,7 @@ describe('isPublicKeyValid', () => {
     it('should fail if method does not support purpose', async () => {
         const mockIpidOnce = { ...mockIpid, isPublicKeyValid: undefined };
 
-        createIpid.mockImplementationOnce(jest.fn(() => mockIpidOnce));
+        createIpid.mockImplementationOnce(() => mockIpidOnce);
 
         expect.assertions(2);
 

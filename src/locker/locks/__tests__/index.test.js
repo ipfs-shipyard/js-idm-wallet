@@ -26,6 +26,6 @@ describe('createLocks', () => {
     it('should fail if one of the isEnabled methods rejects', async () => {
         const storage = { has: jest.fn(() => Promise.reject(new Error('foo'))) };
 
-        await expect(createLocks(storage, {}, 'passphrase')).rejects.toEqual(new Error('foo'));
+        await expect(createLocks(storage, {}, 'passphrase')).rejects.toThrow('foo');
     });
 });

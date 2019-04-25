@@ -50,7 +50,7 @@ describe('resolve', () => {
 
 describe('create', () => {
     it('should create successfully', async () => {
-        const mockOperations = jest.fn();
+        const mockOperations = jest.fn(() => {});
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
@@ -58,15 +58,15 @@ describe('create', () => {
 
         expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if did-ipid create is unsuccessful', async () => {
-        expect.assertions(2);
+        expect.assertions(3);
 
         mockDidIpid.create.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        const mockOperations = jest.fn();
+        const mockOperations = jest.fn(() => {});
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
@@ -75,6 +75,7 @@ describe('create', () => {
             await ipid.create(mockParams, mockOperations);
         } catch (err) {
             expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+            expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }
     });
@@ -82,7 +83,7 @@ describe('create', () => {
 
 describe('update', () => {
     it('should update successfully', async () => {
-        const mockOperations = jest.fn();
+        const mockOperations = jest.fn(() => {});
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
@@ -91,15 +92,15 @@ describe('update', () => {
 
         expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toEqual(mockDocument);
+        expect(document).toBe(mockDocument);
     });
 
     it('should fail if did-ipid update is unsuccessful', async () => {
-        expect.assertions(2);
+        expect.assertions(3);
 
         mockDidIpid.update.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        const mockOperations = jest.fn();
+        const mockOperations = jest.fn(() => {});
         const mockParams = { privateKey: 'fakePrivateKey', foo: 'bar' };
         const mockDid = 'did:ipid:foo';
 
@@ -109,6 +110,7 @@ describe('update', () => {
             await ipid.update(mockDid, mockParams, mockOperations);
         } catch (err) {
             expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
+            expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }
     });

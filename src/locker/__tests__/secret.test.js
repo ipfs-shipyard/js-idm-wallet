@@ -19,7 +19,7 @@ describe('set & get', () => {
 
         secret.set(mockSecret);
 
-        expect(secret.get()).toEqual(mockSecret);
+        expect(secret.get()).toBe(mockSecret);
     });
 
     it('should throw if trying to get an undefined secret', () => {

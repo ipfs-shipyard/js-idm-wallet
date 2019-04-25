@@ -57,6 +57,7 @@
   },
   "jest": {
     "collectCoverage": true,
+    "coveragePathIgnorePatterns": ["/__tests__/.*$"],
     "testRegex": "/__tests__/.*\\.test\\.js$",
     "testPathIgnorePatterns": [
       "/demo/",

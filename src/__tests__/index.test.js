@@ -43,9 +43,9 @@ it('should throw if did creation fails', async () => {
 it('should throw if ipfs node creation fails', async () => {
     expect.assertions(1);
 
-    Ipfs.mockImplementationOnce(jest.fn(() => ({
+    Ipfs.mockImplementationOnce(() => ({
         on: (state, callback) => { state === 'error' && callback('foobar'); },
-    })));
+    }));
 
     try {
         await createWallet();
@@ -55,7 +55,7 @@ it('should throw if ipfs node creation fails', async () => {
 });
 
 it('should use a ipfs node provided in options', async () => {
-    const mockIpfsNode = { isOnline: jest.fn(() => true) };
+    const mockIpfsNode = { isOnline: () => true };
 
     await createWallet({ ipfs: mockIpfsNode });
 
@@ -65,7 +65,7 @@ it('should use a ipfs node provided in options', async () => {
 it('should fail if provided ipfs node is not online', async () => {
     expect.assertions(2);
 
-    const mockIpfsNode = { isOnline: jest.fn(() => false) };
+    const mockIpfsNode = { isOnline: () => false };
 
     try {
         await createWallet({ ipfs: mockIpfsNode });
