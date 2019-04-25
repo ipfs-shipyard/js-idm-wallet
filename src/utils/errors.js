@@ -66,6 +66,12 @@ export class UnavailableStorageError extends BaseError {
     }
 }
 
+export class UnknownLockTypeError extends BaseError {
+    constructor(lockType) {
+        super(`There's no lock of type \`${lockType}\``, 'UNKNOWN_LOCK_TYPE');
+    }
+}
+
 export class InvalidMasterLockOperationError extends BaseError {
     constructor() {
         super('Invalid master lock operation', 'INVALID_MASTER_OPERATION');

@@ -2,7 +2,7 @@ import signal from 'pico-signals';
 import createLocks from './locks';
 import createIdleTimer from './idle-timer';
 import createSecret from './secret';
-import { LockerLockedError, PristineError } from '../utils/errors';
+import { LockerLockedError, PristineError, UnknownLockTypeError } from '../utils/errors';
 
 class Locker {
     #locks;
@@ -16,18 +16,14 @@ class Locker {
     idleTimer;
     masterLock;
 
-    constructor({ storage, secret, locks, idleTimer, masterLockType }) {
-        this.#locks = locks;
-        this.#secret = secret;
+    constructor(storage, secret, locks, masterLock, idleTimer) {
         this.#storage = storage;
-        this.#masterLockType = masterLockType;
-
-        this.masterLock = this.#locks[masterLockType];
-
+        this.#secret = secret;
+        this.#locks = locks;
+        this.masterLock = masterLock;
         this.idleTimer = idleTimer;
-        this.idleTimer.onTimeout(this.#handleIdleTimerTimeout);
 
-        this.#pristine = !this.masterLock || !this.masterLock.isEnabled();
+        this.#pristine = !this.masterLock.isEnabled();
 
         if (!this.#pristine) {
             this.idleTimer.restart();
@@ -35,10 +31,8 @@ class Locker {
             this.#secret.generate();
         }
 
-        if (this.masterLock) {
-            this.masterLock.onEnabledChange(this.#handleMasterLockEnabledChange);
-        }
-
+        this.idleTimer.onTimeout(this.#handleIdleTimerTimeout);
+        this.masterLock.onEnabledChange(this.#handleMasterLockEnabledChange);
         this.#secret.onDefinedChange(this.#handleSecretDefinedChange);
     }
 
@@ -55,7 +49,13 @@ class Locker {
     }
 
     getLock(type) {
-        return this.#locks[type];
+        const lock = this.#locks[type];
+
+        if (!lock) {
+            throw new UnknownLockTypeError(type);
+        }
+
+        return lock;
     }
 
     lock() {
@@ -97,11 +97,15 @@ class Locker {
 
 const createLocker = async (storage, masterLockType = 'passphrase') => {
     const secret = createSecret(new LockerLockedError());
-
-    const locks = await createLocks(storage, secret, masterLockType);
     const idleTimer = await createIdleTimer(storage);
+    const locks = await createLocks(storage, secret, masterLockType);
+    const masterLock = locks[masterLockType];
 
-    return new Locker({ storage, secret, locks, idleTimer, masterLockType });
+    if (!masterLock) {
+        throw new UnknownLockTypeError(masterLockType);
+    }
+
+    return new Locker(storage, secret, locks, masterLock, idleTimer);
 };
 
 export default createLocker;
