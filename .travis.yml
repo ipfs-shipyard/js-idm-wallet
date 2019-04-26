@@ -1,6 +1,7 @@
 language: node_js
 node_js:
-  - "node"
+# Can't run on node 12 yet, see https://github.com/cryptocoinjs/secp256k1-node/issues/142
+#  - "node"
   - "lts/*"
 # Report coverage
 after_success:
