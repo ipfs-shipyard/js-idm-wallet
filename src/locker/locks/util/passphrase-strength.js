@@ -136,7 +136,6 @@ const parseMessage = (message) => {
 
 const checkPassphraseStrength = (passphrase) => {
     const { guesses_log10: guessesLog10, feedback } = zxcvbn(passphrase);
-    const { warning, suggestions } = feedback;
 
     const score = normalizeValue(guessesLog10, [
         { value: 0, norm: 0 },
@@ -147,10 +146,18 @@ const checkPassphraseStrength = (passphrase) => {
         { value: 25, norm: 1 },
     ]);
 
+    // If the score is less than 50% and there's no warning nor suggestions, make sure we have one
+    if (score < 0.5 && !feedback.warning && !feedback.suggestions.length) {
+        feedback.suggestions.push({
+            code: 'UNCOMMON_WORDS_ARE_BETTER',
+            message: 'Add another word or two, uncommon words are better',
+        });
+    }
+
     return {
         score,
-        warning: warning ? parseMessage(warning) : null,
-        suggestions: suggestions.map(parseMessage),
+        warning: feedback.warning ? parseMessage(feedback.warning) : null,
+        suggestions: feedback.suggestions.map(parseMessage),
     };
 };
 
