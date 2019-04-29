@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.2.1"></a>
+## [0.2.1](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.2.0...v0.2.1) (2019-04-29)
+
+
+### Bug Fixes
+
+* ensure we have a warning for passphrases with less than 0.5 ([#8](https://github.com/ipfs-shipyard/js-idm-wallet/issues/8)) ([b999ef0](https://github.com/ipfs-shipyard/js-idm-wallet/commit/b999ef0))
+
+
+
 <a name="0.2.0"></a>
 # [0.2.0](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.1.0...v0.2.0) (2019-04-26)
 
