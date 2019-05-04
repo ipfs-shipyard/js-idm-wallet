@@ -28,7 +28,7 @@ const feedbackMessages = [
         code: 'USE_LONGER_KEYBOARD_PATTERNS',
     },
     {
-        regExp: /Repeats like "aaa" are easy to guess'/i,
+        regExp: /Repeats like "aaa" are easy to guess/i,
         code: 'REPEATED_CHARS_ARE_EASY',
     },
     {
@@ -146,9 +146,12 @@ const checkPassphraseStrength = (passphrase) => {
         { value: 25, norm: 1 },
     ]);
 
+    const suggestions = feedback.suggestions.map(parseMessage);
+    const warning = feedback.warning ? parseMessage(feedback.warning) : null;
+
     // If the score is less than 50% and there's no warning nor suggestions, make sure we have one
-    if (score < 0.5 && !feedback.warning && !feedback.suggestions.length) {
-        feedback.suggestions.push({
+    if (score < 0.5 && !warning && !suggestions.length) {
+        suggestions.push({
             code: 'UNCOMMON_WORDS_ARE_BETTER',
             message: 'Add another word or two, uncommon words are better',
         });
@@ -156,8 +159,8 @@ const checkPassphraseStrength = (passphrase) => {
 
     return {
         score,
-        warning: feedback.warning ? parseMessage(feedback.warning) : null,
-        suggestions: feedback.suggestions.map(parseMessage),
+        warning,
+        suggestions,
     };
 };
 
