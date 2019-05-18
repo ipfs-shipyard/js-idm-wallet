@@ -1,13 +1,13 @@
-import pReduce from 'p-reduce';
 import signal from 'pico-signals';
+import { pick } from 'lodash';
 import { generateKeyPair } from 'human-crypto-keys';
-
-import { createIdentity, restoreIdentity, removeIdentity, IDENTITY_KEY_PREFIX } from './identity';
-import { assertCurrentDevice, DEVICE_ID_PREFIX } from './identity/devices';
-import { assertBackupData } from './identity/backup';
-import { assertProfile } from './identity/profile';
-import { parseDid } from '../utils';
-import { UnsupportedDidMethodPurposeError, UnknownIdentity } from '../utils/errors';
+import { parseDid } from '../utils/did';
+import { UnsupportedDidMethodPurposeError, UnknownIdentityError, IdentityAlreadyExistsError } from '../utils/errors';
+import {
+    createIdentity, removeIdentity, loadIdentities,
+    assertCurrentDevice, assertBackupData, assertSchema,
+    DEVICE_ID_PREFIX,
+} from './identity';
 
 const MASTER_KEY_ID = 'idm-master';
 
@@ -20,58 +20,61 @@ const mockIdentitySchema = {
 class Identities {
     #storage;
     #didm;
+    #orbitdb;
 
     #identities;
+    #identitiesMap;
     #onChange = signal();
 
-    constructor(storage, didm) {
+    constructor(storage, didm, orbitdb) {
         this.#storage = storage;
         this.#didm = didm;
+        this.#orbitdb = orbitdb;
+
+        window.foo = this;
     }
 
     get(id) {
-        if (!this.#identities || !this.#identities[id]) {
-            throw new UnknownIdentity(id);
+        if (!this.#identitiesMap || !this.#identitiesMap[id]) {
+            throw new UnknownIdentityError(id);
         }
 
-        return this.#identities[id];
+        return this.#identitiesMap[id];
     }
 
     async list() {
         await this.#assureIdentities();
 
-        return Object.values(this.#identities);
+        return this.#identities;
     }
 
     async peek(didMethod, parameters) {
-        const { mnemonic } = parameters;
-
         this.#assertSupport(didMethod, 'getDid', 'resolve');
 
         await this.#assureIdentities();
 
-        const did = await this.#didm.getDid(didMethod, { mnemonic });
+        const did = await this.#didm.getDid(didMethod, parameters);
         const didDocument = await this.#didm.resolve(did);
 
         return {
             did: didDocument.id,
+            didDocument,
             schema: mockIdentitySchema,
         };
     }
 
     async create(didMethod, parameters) {
-        const { schema, device } = parameters;
+        const { schema, deviceInfo } = parameters;
 
         this.#assertSupport(didMethod, 'create');
-
-        assertProfile(schema);
+        assertSchema(schema);
 
         await this.#assureIdentities();
 
         const masterKeyPair = await generateKeyPair('rsa');
-        const deviceKeyPair = await generateKeyPair('rsa');
+        const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
 
-        const currentDevice = { id: 'idm-device-temp', ...device, ...deviceKeyPair };
+        const currentDevice = { id: 'idm-device-genesis', ...deviceInfo, ...deviceKeyPair };
         const backupData = masterKeyPair;
 
         assertCurrentDevice(currentDevice);
@@ -89,7 +92,7 @@ class Identities {
                 publicKeyPem: deviceKeyPair.publicKey,
             }, { idPrefix: DEVICE_ID_PREFIX });
 
-            currentDevice.id = documentDeviceKey.id;
+            currentDevice.id = parseDid(documentDeviceKey.id).fragment;
         });
 
         const identity = await createIdentity({
@@ -97,55 +100,60 @@ class Identities {
             currentDevice,
             backupData,
             schema,
-        }, this.#storage);
+        }, this.#storage, this.#didm, this.#orbitdb);
 
-        this.#identities[identity.getId()] = identity;
+        this.#identitiesMap[identity.getId()] = identity;
+        this.#sortIdentities();
 
-        this.#onChange.dispatch(Object.values(this.#identities));
+        this.#onChange.dispatch(Object.values(this.#identitiesMap));
 
         return identity;
     }
 
     async import(didMethod, parameters) {
-        const { mnemonic, device } = parameters;
+        const { deviceInfo } = parameters;
 
         this.#assertSupport(didMethod, 'getDid', 'update');
 
         await this.#assureIdentities();
 
-        const deviceKeyPair = await generateKeyPair('rsa');
+        const did = await this.#didm.getDid(didMethod, parameters);
+        const exists = Object.values(this.#identitiesMap).some((identity) => identity.getDid() === did);
 
-        const currentDevice = { id: 'idm-device-temp', ...device, ...deviceKeyPair };
+        if (exists) {
+            throw new IdentityAlreadyExistsError();
+        }
+
+        const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
+
+        const currentDevice = { id: 'idm-device-genesis', ...deviceInfo, ...deviceKeyPair };
 
         assertCurrentDevice(currentDevice);
 
-        const did = await this.#didm.getDid(didMethod, { mnemonic });
-
-        const didDocument = await this.#didm.update(did, { mnemonic }, (document) => {
+        const didDocument = await this.#didm.update(did, parameters, (document) => {
             const documentDeviceKey = document.addPublicKey({
                 type: 'RsaVerificationKey2018',
                 publicKeyPem: deviceKeyPair.publicKey,
             }, { idPrefix: DEVICE_ID_PREFIX });
 
-            currentDevice.id = documentDeviceKey.id;
+            currentDevice.id = parseDid(documentDeviceKey.id).fragment;
         });
 
         const identity = await createIdentity({
             did: didDocument.id,
             currentDevice,
             schema: mockIdentitySchema,
-        }, this.#storage);
+        }, this.#storage, this.#didm, this.#orbitdb);
 
-        this.#identities[identity.id] = identity;
+        this.#identitiesMap[identity.id] = identity;
+        this.#sortIdentities();
 
-        this.#onChange.dispatch(Object.values(this.#identities));
+        this.#onChange.dispatch(Object.values(this.#identitiesMap));
 
         return identity;
     }
 
     async remove(id, parameters) {
-        const { mnemonic } = parameters;
-
         await this.#assureIdentities();
 
         const identity = this.get(id);
@@ -154,39 +162,33 @@ class Identities {
 
         this.#assertSupport(identityDidMethod, 'update');
 
-        await this.#didm.update(identityDid, { mnemonic }, (document) => {
+        await this.#didm.update(identityDid, parameters, (document) => {
             document.revokePublicKey(identity.devices.getCurrent().id);
         });
 
-        await removeIdentity(id, this.#storage);
+        await removeIdentity(id, this.#storage, this.#didm, this.#orbitdb);
 
-        delete this.#identities[id];
+        delete this.#identitiesMap[id];
+        this.#sortIdentities();
     }
 
     onChange(fn) {
         return this.#onChange.add(fn);
     }
 
-    #readIdentities = async () => {
-        const identitiesKeys = await this.#storage.list({
-            gte: IDENTITY_KEY_PREFIX,
-            lte: `${IDENTITY_KEY_PREFIX}\xFF`,
-            values: false,
-        });
-
-        const identities = await pReduce(identitiesKeys, async (acc, key) => {
-            const identity = await restoreIdentity(key, this.#storage);
-
-            return Object.assign(acc, { [identity.getId()]: identity });
-        }, {});
-
-        return identities;
+    #assureIdentities = async () => {
+        if (!this.#identitiesMap) {
+            this.#identitiesMap = await loadIdentities(this.#storage, this.#didm, this.#orbitdb);
+            console.log(this.#identitiesMap);
+            this.#sortIdentities();
+        }
     }
 
-    #assureIdentities = async () => {
-        if (!this.#identities) {
-            this.#identities = await this.#readIdentities();
-        }
+    #sortIdentities = () => {
+        const identities = Object.values(this.#identitiesMap);
+
+        // Sort identities from older to new
+        this.#identities = identities.sort((identity1, identity2) => identity1.getAddedAt() - identity2.getAddedAt());
     }
 
     #assertSupport = (didMethod, ...purposes) => {
@@ -198,6 +200,6 @@ class Identities {
     }
 }
 
-const createIdentities = (storage, didm) => new Identities(storage, didm);
+const createIdentities = (storage, didm, orbitdb) => new Identities(storage, didm, orbitdb);
 
 export default createIdentities;

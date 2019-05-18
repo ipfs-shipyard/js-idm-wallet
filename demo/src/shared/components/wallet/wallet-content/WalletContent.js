@@ -125,11 +125,12 @@ class WalletContent extends Component {
             result.forEach((identity) => {
                 console.log('Identity:', identity);
                 console.log('Serialized:', {
+                    addedAt: identity.getAddedAt(),
                     id: identity.getId(),
                     did: identity.getDid(),
                     devices: identity.devices.list(),
                     backup: identity.backup.getData(),
-                    profile: identity.profile.getSchema(),
+                    profile: identity.profile.toSchema(),
                 });
             });
             console.log(' ');
@@ -142,10 +143,10 @@ class WalletContent extends Component {
 
         wallet.identities.create('ipid', {
             schema: {
-                '@type': 'person',
+                '@type': 'Person',
                 name: 'John Doe',
             },
-            device: {
+            deviceInfo: {
                 type: 'laptop',
                 name: 'MacBook Pro'
             },
@@ -154,11 +155,12 @@ class WalletContent extends Component {
             console.log('Created Identity:')
             console.log('Identity:', identity);
             console.log('Serialized:', {
+                addedAt: identity.getAddedAt(),
                 id: identity.getId(),
                 did: identity.getDid(),
                 devices: identity.devices.list(),
                 backup: identity.backup.getData(),
-                profile: identity.profile.getSchema(),
+                profile: identity.profile.toSchema(),
             });
             console.log(' ');
             console.log('End of Created Identity.')
@@ -173,13 +175,13 @@ class WalletContent extends Component {
         const { wallet } = this.props;
 
         wallet.identities.import('ipid', {
-            mnemonic: this.importValue,
-            device: {
+            masterMnemonic: this.importValue,
+            deviceInfo: {
                 type: 'laptop',
                 name: 'MacBook Pro'
             },
         })
-        .then((result) => console.log('Imported Identity:', result));
+        .then((result) => console.log('Imported Identity:', result))
     };
 
     handlePeekInputChange = (event) => {
@@ -190,7 +192,7 @@ class WalletContent extends Component {
         const { wallet } = this.props;
 
         wallet.identities.peek('ipid', {
-            mnemonic: this.peekValue,
+            masterMnemonic: this.peekValue,
         })
         .then((result) => console.log('Peek Resolved:', result));
     };

@@ -102,9 +102,15 @@ export class LockDisabledError extends BaseError {
     }
 }
 
-export class UnknownIdentity extends BaseError {
+export class UnknownIdentityError extends BaseError {
     constructor(did) {
         super(`Unknown identity with: ${did}`, 'UNKNOWN_IDENTITY');
+    }
+}
+
+export class IdentityAlreadyExistsError extends BaseError {
+    constructor() {
+        super('Identity already exists', 'IDENTITY_ALREADY_EXISTS');
     }
 }
 
@@ -132,8 +138,26 @@ export class InvalidDevicePropertyError extends BaseError {
     }
 }
 
+export class UnknownDeviceError extends BaseError {
+    constructor(id) {
+        super(`Unknown device with: ${id}`, 'UNKNOWN_DEVICE');
+    }
+}
+
+export class InvalidDeviceOperationError extends BaseError {
+    constructor(msg) {
+        super(msg, 'INVALID_DEVICE_OPERATION');
+    }
+}
+
 export class InvalidProfilePropertyError extends BaseError {
     constructor(property, value) {
         super(`Invalid profile ${property}: ${value}`, 'INVALID_PROFILE_PROPERTY');
+    }
+}
+
+export class InvalidProfileUnsetPropertyError extends BaseError {
+    constructor(property) {
+        super(`Cannot remove property from profile: ${property}`, 'INVALID_UNSET_PROFILE_PROPERTY');
     }
 }

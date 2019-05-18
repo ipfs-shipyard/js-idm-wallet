@@ -1,7 +1,6 @@
 import signal from 'pico-signals';
 import { InvalidBackupPropertyError } from '../../utils/errors';
-
-export const BAKCUP_KEY_PREFIX = 'backup!';
+import { getBackupKey } from './utils/storage-keys';
 
 class Backup {
     #data
@@ -40,8 +39,6 @@ class Backup {
     }
 }
 
-const getBackupKey = (identityKey) => `${BAKCUP_KEY_PREFIX}${identityKey}`;
-
 export const assertBackupData = (data) => {
     const { mnemonic } = data;
 
@@ -50,8 +47,8 @@ export const assertBackupData = (data) => {
     }
 };
 
-export const createBackup = async (data, identityKey, storage) => {
-    const key = getBackupKey(identityKey);
+export const createBackup = async (data, identityDescriptor, storage) => {
+    const key = getBackupKey(identityDescriptor.id);
 
     if (data != null) {
         assertBackupData(data);
@@ -62,16 +59,11 @@ export const createBackup = async (data, identityKey, storage) => {
     return new Backup(data, key, storage);
 };
 
-export const restoreBackup = async (identityKey, storage) => {
-    const key = getBackupKey(identityKey);
-
+export const restoreBackup = async (identityDescriptor, storage) => {
+    const key = getBackupKey(identityDescriptor.id);
     const data = await storage.get(key);
-
-    if (data != null) {
-        assertBackupData(data);
-    }
 
     return new Backup(data, key, storage);
 };
 
-export const removeBackup = async (identityKey, storage) => storage.remove(getBackupKey(identityKey));
+export const removeBackup = async (identityDescriptor, storage) => storage.remove(getBackupKey(identityDescriptor.id));

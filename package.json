@@ -95,6 +95,7 @@
     "ipfs": "^0.35.0",
     "level": "^5.0.1",
     "normalize-value": "^1.0.1",
+    "orbit-db": "^0.20.1",
     "p-map": "^2.1.0",
     "p-props": "^2.0.0",
     "p-reduce": "^2.1.0",

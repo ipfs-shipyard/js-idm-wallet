@@ -1,53 +1,95 @@
-import { InvalidProfilePropertyError } from '../../utils/errors';
+import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError } from '../../utils/errors';
+import openOrbitdbStore from './utils/orbitdb-stores';
 
-const PROFILE_KEY_PREFIX = 'profile!';
-
-const PROFILE_TYPES = ['person', 'organization', 'other'];
+const PROFILE_TYPES = ['Person', 'Organization', 'Thing'];
+const SCHEMA_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
 
 class Profile {
-    #schema
+    #orbitdbStore;
 
-    constructor(schema) {
-        this.#schema = schema;
+    constructor(orbitdbStore) {
+        this.#orbitdbStore = orbitdbStore;
     }
 
-    getSchema() {
-        return this.#schema;
+    toSchema() {
+        return this.#orbitdbStore.all;
+    }
+
+    async setProperty(key, value) {
+        assertSchemaProperty(key, value);
+
+        await this.#orbitdbStore.put(key, value);
+    }
+
+    async unsetProperty(key) {
+        if (SCHEMA_MANDATORY_PROPERTIES.includes(key)) {
+            throw new InvalidProfileUnsetPropertyError(key);
+        }
+
+        await this.#orbitdbStore.del(key);
     }
 }
 
-const getProfileKey = (identityKey) => `${PROFILE_KEY_PREFIX}${identityKey}`;
+const loadOrbitdbStore = async (orbitdb, identityId) => {
+    const store = await openOrbitdbStore(orbitdb, identityId, 'profile', 'keyvalue');
 
-export const assertProfile = (schema) => {
-    const { '@type': type, name } = schema;
+    await store.load();
 
-    if (!type || !PROFILE_TYPES.includes(type)) {
-        throw new InvalidProfilePropertyError('type', type);
+    return store;
+};
+
+const assertSchemaProperty = (key, value) => {
+    switch (key) {
+    case '@context':
+        if (value !== 'https://schema.org') {
+            throw new InvalidProfilePropertyError('@context', value);
+        }
+        break;
+    case '@type':
+        if (!PROFILE_TYPES.includes(value)) {
+            throw new InvalidProfilePropertyError('@type', value);
+        }
+        break;
+    case 'name':
+        if (typeof value !== 'string' || !value.trim()) {
+            throw new InvalidProfilePropertyError('name', value);
+        }
+        break;
+    default:
+        break;
+    }
+};
+
+export const assertSchema = (schema) => {
+    SCHEMA_MANDATORY_PROPERTIES.forEach((property) => {
+        if (schema[property] == null) {
+            throw new InvalidProfilePropertyError(property, schema[property]);
+        }
+    });
+
+    Object.entries(schema).forEach(([key, value]) => assertSchemaProperty(key, value));
+};
+
+export const createProfile = async (schema, identityDescriptor, orbitdb) => {
+    assertSchema(schema);
+
+    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
+
+    for await (const [key, value] of Object.entries(schema)) {
+        await orbitdbStore.put(key, value);
     }
 
-    if (!name || typeof name !== 'string') {
-        throw new InvalidProfilePropertyError('name', name);
-    }
+    return new Profile(orbitdbStore);
 };
 
-export const createProfile = async (schema, identityKey, storage) => {
-    const key = getProfileKey(identityKey);
+export const restoreProfile = async (identityDescriptor, orbitdb) => {
+    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
 
-    assertProfile(schema);
-
-    await storage.set(key, schema, { encrypt: true });
-
-    return new Profile(schema);
+    return new Profile(orbitdbStore);
 };
 
-export const restoreProfile = async (identityKey, storage) => {
-    const key = getProfileKey(identityKey);
+export const removeProfile = async (identityDescriptor, orbitdb) => {
+    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
 
-    const schema = await storage.get(key);
-
-    assertProfile(schema);
-
-    return new Profile(schema);
+    await orbitdbStore.drop();
 };
-
-export const removeProfile = async (identityKey, storage) => storage.remove(getProfileKey(identityKey));
