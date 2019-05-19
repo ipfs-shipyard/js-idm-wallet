@@ -175,7 +175,7 @@ class WalletContent extends Component {
         const { wallet } = this.props;
 
         wallet.identities.import('ipid', {
-            masterMnemonic: this.importValue,
+            mnemonic: this.importValue,
             deviceInfo: {
                 type: 'laptop',
                 name: 'MacBook Pro'
@@ -192,7 +192,7 @@ class WalletContent extends Component {
         const { wallet } = this.props;
 
         wallet.identities.peek('ipid', {
-            masterMnemonic: this.peekValue,
+            mnemonic: this.peekValue,
         })
         .then((result) => console.log('Peek Resolved:', result));
     };

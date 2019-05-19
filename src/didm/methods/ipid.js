@@ -59,20 +59,20 @@ class Ipid {
     };
 
     #getMasterPrivateKey = async (params) => {
-        const { masterPrivateKey, masterMnemonic, masterSeed } = params;
+        const { privateKey, mnemonic, seed } = params;
 
-        if (masterPrivateKey) {
-            return masterPrivateKey;
+        if (privateKey) {
+            return privateKey;
         }
 
-        if (masterSeed) {
-            const { privateKey } = await getKeyPairFromSeed(masterSeed, 'rsa');
+        if (seed) {
+            const { privateKey } = await getKeyPairFromSeed(seed, 'rsa');
 
             return privateKey;
         }
 
-        if (masterMnemonic) {
-            const { privateKey } = await getKeyPairFromMnemonic(masterMnemonic, 'rsa');
+        if (mnemonic) {
+            const { privateKey } = await getKeyPairFromMnemonic(mnemonic, 'rsa');
 
             return privateKey;
         }
