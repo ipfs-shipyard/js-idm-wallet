@@ -143,6 +143,7 @@ class WalletContent extends Component {
 
         wallet.identities.create('ipid', {
             schema: {
+                '@context': 'https://schema.org',
                 '@type': 'Person',
                 name: 'John Doe',
             },

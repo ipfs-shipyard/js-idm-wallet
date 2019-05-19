@@ -80,7 +80,7 @@ class Identities {
         assertCurrentDevice(currentDevice);
         assertBackupData(backupData);
 
-        const didDocument = await this.#didm.create(didMethod, { masterPrivateKey: masterKeyPair.privateKey }, (document) => {
+        const didDocument = await this.#didm.create(didMethod, { privateKey: masterKeyPair.privateKey }, (document) => {
             document.addPublicKey({
                 id: MASTER_KEY_ID,
                 type: 'RsaVerificationKey2018',
