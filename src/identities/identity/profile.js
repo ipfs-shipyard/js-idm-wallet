@@ -1,3 +1,4 @@
+import signal from 'pico-signals';
 import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError } from '../../utils/errors';
 import openOrbitdbStore from './utils/orbitdb-stores';
 
@@ -6,13 +7,21 @@ const SCHEMA_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
 
 class Profile {
     #orbitdbStore;
+    #onChange = signal();
 
     constructor(orbitdbStore) {
         this.#orbitdbStore = orbitdbStore;
+
+        this.#orbitdbStore.events.on('write', this.#handleStoreChange);
+        this.#orbitdbStore.events.on('replicated', this.#handleStoreChange);
     }
 
     toSchema() {
         return this.#orbitdbStore.all;
+    }
+
+    getProperty(key) {
+        return this.#orbitdbStore.get(key);
     }
 
     async setProperty(key, value) {
@@ -27,6 +36,14 @@ class Profile {
         }
 
         await this.#orbitdbStore.del(key);
+    }
+
+    onChange(fn) {
+        return this.#onChange.add(fn);
+    }
+
+    #handleStoreChange = () => {
+        this.#onChange.dispatch(this.toSchema());
     }
 }
 

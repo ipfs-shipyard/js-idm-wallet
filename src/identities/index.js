@@ -105,7 +105,7 @@ class Identities {
         this.#identitiesMap[identity.getId()] = identity;
         this.#sortIdentities();
 
-        this.#onChange.dispatch(Object.values(this.#identitiesMap));
+        this.#onChange.dispatch(this.#identities);
 
         return identity;
     }
@@ -148,7 +148,7 @@ class Identities {
         this.#identitiesMap[identity.id] = identity;
         this.#sortIdentities();
 
-        this.#onChange.dispatch(Object.values(this.#identitiesMap));
+        this.#onChange.dispatch(this.#identities);
 
         return identity;
     }
