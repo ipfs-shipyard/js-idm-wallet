@@ -42,16 +42,16 @@ export const createIdentity = async ({ did, currentDevice, backupData, schema },
 
     const id = await sha256(did);
     const key = getDescriptorKey(id);
-    const identityDescriptor = { addedAt: Date.now(), did, id };
+    const descriptor = { addedAt: Date.now(), did, id };
 
     try {
-        const devices = await createDevices(currentDevice, identityDescriptor, didm, storage, orbitdb);
-        const backup = await createBackup(backupData, identityDescriptor, storage);
-        const profile = await createProfile(schema, identityDescriptor, orbitdb);
+        const devices = await createDevices(currentDevice, descriptor, didm, storage, orbitdb);
+        const backup = await createBackup(backupData, descriptor, storage);
+        const profile = await createProfile(schema, descriptor, orbitdb);
 
-        await storage.set(key, identityDescriptor, { encrypt: true });
+        await storage.set(key, descriptor, { encrypt: true });
 
-        return new Identity(identityDescriptor, devices, backup, profile);
+        return new Identity(descriptor, devices, backup, profile);
     } catch (err) {
         await removeIdentity(id, storage, didm, orbitdb);
 
@@ -61,15 +61,15 @@ export const createIdentity = async ({ did, currentDevice, backupData, schema },
 
 export const removeIdentity = async (id, storage, didm, orbitdb) => {
     const key = getDescriptorKey(id);
-    const identityDescriptor = await storage.get(key);
+    const descriptor = await storage.get(key);
 
-    if (!identityDescriptor) {
+    if (!descriptor) {
         return;
     }
 
-    await removeDevices(identityDescriptor, didm, storage, orbitdb);
-    await removeBackup(identityDescriptor, storage);
-    await removeProfile(identityDescriptor, orbitdb);
+    await removeDevices(descriptor, didm, storage, orbitdb);
+    await removeBackup(descriptor, storage);
+    await removeProfile(descriptor, orbitdb);
 
     await storage.remove(key);
 };
@@ -82,15 +82,15 @@ export const loadIdentities = async (storage, didm, orbitdb) => {
     });
 
     return pReduce(identitiesKeys, async (acc, key) => {
-        const identityDescriptor = await storage.get(key);
+        const descriptor = await storage.get(key);
 
-        const devices = await restoreDevices(identityDescriptor, didm, storage, orbitdb);
-        const backup = await restoreBackup(identityDescriptor, storage);
-        const profile = await restoreProfile(identityDescriptor, orbitdb);
+        const devices = await restoreDevices(descriptor, didm, storage, orbitdb);
+        const backup = await restoreBackup(descriptor, storage);
+        const profile = await restoreProfile(descriptor, orbitdb);
 
-        const identity = new Identity(identityDescriptor, devices, backup, profile);
+        const identity = new Identity(descriptor, devices, backup, profile);
 
-        return Object.assign(acc, { [identityDescriptor.id]: identity });
+        return Object.assign(acc, { [descriptor.id]: identity });
     }, {});
 };
 
