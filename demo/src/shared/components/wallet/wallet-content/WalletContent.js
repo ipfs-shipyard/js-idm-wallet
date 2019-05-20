@@ -6,6 +6,12 @@ import Timer from '../../timer/Timer';
 import './WalletContent.css';
 
 class WalletContent extends Component {
+    componentDidMount() {
+        const { wallet } = this.props;
+
+        wallet.identities.load();
+    }
+
     render() {
         const { wallet: { locker } } = this.props;
 
@@ -74,8 +80,8 @@ class WalletContent extends Component {
                                     <span>Remove</span>
                                     <input
                                         type="text"
-                                        placeholder="did"
-                                        onChange={ this.handleRemoveDidChange } />
+                                        placeholder="id"
+                                        onChange={ this.handleRemoveIdChange } />
                                     <input
                                         type="text"
                                         placeholder="mnemonic"
@@ -119,10 +125,11 @@ class WalletContent extends Component {
     handleList = () => {
         const { wallet } = this.props;
 
-        wallet.identities.list()
-        .then((result) => {
-            console.log('Identities List:');
-            result.forEach((identity) => {
+        try {
+            const identities = wallet.identities.list();
+
+            console.log('List Identities:');
+            identities.forEach((identity) => {
                 console.log('Identity:', identity);
                 console.log('Serialized:', {
                     addedAt: identity.getAddedAt(),
@@ -132,10 +139,12 @@ class WalletContent extends Component {
                     backup: identity.backup.getData(),
                     profile: identity.profile.toSchema(),
                 });
+                console.log(' ');
             });
-            console.log(' ');
-            console.log('End of Listing Identites.')
-        });
+            console.log('Final List Identities.');
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     handleCreate = () => {
@@ -198,8 +207,8 @@ class WalletContent extends Component {
         .then((result) => console.log('Peek Resolved:', result));
     };
 
-    handleRemoveDidChange = (event) => {
-        this.removeDidValue = event.target.value;
+    handleRemoveIdChange = (event) => {
+        this.removeIdValue = event.target.value;
     };
 
     handleRemoveMnemonicChange = (event) => {
@@ -209,7 +218,7 @@ class WalletContent extends Component {
     handleRemoveSubmit = () => {
         const { wallet } = this.props;
 
-        wallet.identities.remove(this.removeDidValue, {
+        wallet.identities.remove(this.removeIdValue, {
             mnemonic: this.removeMnemonicValue,
         })
         .then(() => console.log('Removed Successfully!'));

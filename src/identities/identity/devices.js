@@ -44,7 +44,7 @@ class Devices {
     }
 
     getCurrent() {
-        return this.get(this.currentDevice.id);
+        return this.get(this.#currentDevice.id);
     }
 
     get(id) {

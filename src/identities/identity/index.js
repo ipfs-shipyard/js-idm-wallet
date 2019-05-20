@@ -1,7 +1,7 @@
 import pReduce from 'p-reduce';
 import { createDevices, restoreDevices, removeDevices, assertCurrentDevice, DEVICE_ID_PREFIX } from './devices';
 import { createBackup, restoreBackup, removeBackup, assertBackupData } from './backup';
-import { createProfile, restoreProfile, removeProfile, assertSchema } from './profile';
+import { createProfile, restoreProfile, removeProfile, assertSchema, peekSchema } from './profile';
 import { isDidValid } from '../../utils/did';
 import { sha256 } from '../../utils/sha';
 import { InvalidIdentityPropertyError, UnableCreateIdentityError } from '../../utils/errors';
@@ -35,6 +35,15 @@ const assertIdentityDid = (did) => {
     if (!isDidValid(did)) {
         throw new InvalidIdentityPropertyError('did', did);
     }
+};
+
+export const peekIdentitySchema = async (did, orbitdb) => {
+    assertIdentityDid(did);
+
+    const id = await sha256(did);
+    const descriptor = { addedAt: Date.now(), did, id };
+
+    return peekSchema(descriptor, orbitdb);
 };
 
 export const createIdentity = async ({ did, currentDevice, backupData, schema }, storage, didm, orbitdb) => {

@@ -2,20 +2,16 @@ import signal from 'pico-signals';
 import { pick } from 'lodash';
 import { generateKeyPair } from 'human-crypto-keys';
 import { parseDid } from '../utils/did';
-import { UnsupportedDidMethodPurposeError, UnknownIdentityError, IdentityAlreadyExistsError } from '../utils/errors';
 import {
-    createIdentity, removeIdentity, loadIdentities,
+    UnsupportedDidMethodPurposeError, IdentitiesNotLoadedError, UnknownIdentityError, IdentityAlreadyExistsError,
+} from '../utils/errors';
+import {
+    createIdentity, removeIdentity, loadIdentities, peekIdentitySchema,
     assertCurrentDevice, assertBackupData, assertSchema,
     DEVICE_ID_PREFIX,
 } from './identity';
 
 const MASTER_KEY_ID = 'idm-master';
-
-const mockIdentitySchema = {
-    '@type': 'person',
-    name: 'John Doe',
-    image: 'https://images.unsplash.com/photo-1504455583697-3a9b04be6397',
-};
 
 class Identities {
     #storage;
@@ -24,14 +20,13 @@ class Identities {
 
     #identities;
     #identitiesMap;
+    #identitiesLoad;
     #onChange = signal();
 
     constructor(storage, didm, orbitdb) {
         this.#storage = storage;
         this.#didm = didm;
         this.#orbitdb = orbitdb;
-
-        window.foo = this;
     }
 
     get(id) {
@@ -42,24 +37,46 @@ class Identities {
         return this.#identitiesMap[id];
     }
 
-    async list() {
-        await this.#assureIdentities();
+    list() {
+        if (!this.#identities) {
+            throw new IdentitiesNotLoadedError();
+        }
 
         return this.#identities;
+    }
+
+    async load() {
+        if (this.#identitiesMap) {
+            return;
+        }
+
+        if (!this.#identitiesLoad) {
+            this.#identitiesLoad = this.#assureIdentities().catch((error) => {
+                this.#identities = undefined;
+                this.#identitiesMap = undefined;
+                this.#identitiesLoad = undefined;
+
+                throw error;
+            });
+        }
+
+        return this.#identitiesLoad;
     }
 
     async peek(didMethod, parameters) {
         this.#assertSupport(didMethod, 'getDid', 'resolve');
 
-        await this.#assureIdentities();
+        await this.load();
 
         const did = await this.#didm.getDid(didMethod, parameters);
         const didDocument = await this.#didm.resolve(did);
+        const identity = this.#getIdentityByDid(did);
+        const schema = identity ? identity.profile.toSchema() : await peekIdentitySchema(did, this.#orbitdb);
 
         return {
-            did: didDocument.id,
+            did,
             didDocument,
-            schema: mockIdentitySchema,
+            schema,
         };
     }
 
@@ -69,7 +86,7 @@ class Identities {
         this.#assertSupport(didMethod, 'create');
         assertSchema(schema);
 
-        await this.#assureIdentities();
+        await this.load();
 
         const masterKeyPair = await generateKeyPair('rsa');
         const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
@@ -115,13 +132,12 @@ class Identities {
 
         this.#assertSupport(didMethod, 'getDid', 'update');
 
-        await this.#assureIdentities();
+        await this.load();
 
         const did = await this.#didm.getDid(didMethod, parameters);
-        const exists = Object.values(this.#identitiesMap).some((identity) => identity.getDid() === did);
 
-        if (exists) {
-            throw new IdentityAlreadyExistsError();
+        if (this.#getIdentityByDid(did)) {
+            throw new IdentityAlreadyExistsError(did);
         }
 
         const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
@@ -139,10 +155,12 @@ class Identities {
             currentDevice.id = parseDid(documentDeviceKey.id).fragment;
         });
 
+        const schema = await peekIdentitySchema(did, this.#orbitdb);
+
         const identity = await createIdentity({
             did: didDocument.id,
             currentDevice,
-            schema: mockIdentitySchema,
+            schema,
         }, this.#storage, this.#didm, this.#orbitdb);
 
         this.#identitiesMap[identity.id] = identity;
@@ -154,7 +172,7 @@ class Identities {
     }
 
     async remove(id, parameters) {
-        await this.#assureIdentities();
+        await this.load();
 
         const identity = this.get(id);
         const identityDid = identity.getDid();
@@ -176,12 +194,13 @@ class Identities {
         return this.#onChange.add(fn);
     }
 
+    #getIdentityByDid = (did) =>
+        this.#identities.find((identity) => identity.getDid() === did);
+
     #assureIdentities = async () => {
-        if (!this.#identitiesMap) {
-            this.#identitiesMap = await loadIdentities(this.#storage, this.#didm, this.#orbitdb);
-            console.log(this.#identitiesMap);
-            this.#sortIdentities();
-        }
+        this.#identitiesMap = await loadIdentities(this.#storage, this.#didm, this.#orbitdb);
+
+        this.#sortIdentities();
     }
 
     #sortIdentities = () => {

@@ -1,9 +1,11 @@
+import pTimeout from 'p-timeout';
 import signal from 'pico-signals';
 import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError } from '../../utils/errors';
 import openOrbitdbStore from './utils/orbitdb-stores';
 
 const PROFILE_TYPES = ['Person', 'Organization', 'Thing'];
 const SCHEMA_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
+const MAX_REPLICATION_WAIT_TIME = 60000;
 
 class Profile {
     #orbitdbStore;
@@ -85,6 +87,25 @@ export const assertSchema = (schema) => {
     });
 
     Object.entries(schema).forEach(([key, value]) => assertSchemaProperty(key, value));
+};
+
+export const peekSchema = async (identityDescriptor, orbitdb) => {
+    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
+    const profile = new Profile(orbitdbStore);
+
+    // Wait for it to replicate if necessary
+    if (!profile.getProperty('@context')) {
+        const replicate = new Promise((resolve) => {
+            orbitdbStore.events.on('replicated', resolve);
+        });
+
+        await pTimeout(replicate, MAX_REPLICATION_WAIT_TIME);
+    }
+
+    // Drop the database as it might not get used
+    await orbitdbStore.drop();
+
+    return profile.toSchema();
 };
 
 export const createProfile = async (schema, identityDescriptor, orbitdb) => {
