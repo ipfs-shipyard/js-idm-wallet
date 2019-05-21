@@ -99,7 +99,6 @@
     "p-map": "^2.1.0",
     "p-props": "^2.0.0",
     "p-reduce": "^2.1.0",
-    "p-timeout": "^3.1.0",
     "pico-signals": "^1.0.0",
     "pify": "^4.0.1",
     "scrypt-async": "^2.0.1",

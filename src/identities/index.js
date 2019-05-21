@@ -155,12 +155,9 @@ class Identities {
             currentDevice.id = parseDid(documentDeviceKey.id).fragment;
         });
 
-        const schema = await peekIdentitySchema(did, this.#orbitdb);
-
         const identity = await createIdentity({
             did: didDocument.id,
             currentDevice,
-            schema,
         }, this.#storage, this.#didm, this.#orbitdb);
 
         this.#identitiesMap[identity.id] = identity;

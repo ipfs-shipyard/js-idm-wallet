@@ -1,6 +1,5 @@
-import pTimeout from 'p-timeout';
 import signal from 'pico-signals';
-import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError } from '../../utils/errors';
+import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError, ProfileReplicationTimeoutError } from '../../utils/errors';
 import openOrbitdbStore from './utils/orbitdb-stores';
 
 const PROFILE_TYPES = ['Person', 'Organization', 'Thing'];
@@ -57,6 +56,21 @@ const loadOrbitdbStore = async (orbitdb, identityId) => {
     return store;
 };
 
+const waitStoreRepilcation = (orbitdbStore) => new Promise((resolve, reject) => {
+    const rejectWithError = () => reject(new ProfileReplicationTimeoutError());
+
+    let timeout = setTimeout(rejectWithError, MAX_REPLICATION_WAIT_TIME);
+
+    orbitdbStore.events.on('replicated', () => {
+        clearTimeout(timeout);
+        resolve();
+    });
+    orbitdbStore.events.on('replicate.progress', () => {
+        clearTimeout(timeout);
+        timeout = setTimeout(rejectWithError, MAX_REPLICATION_WAIT_TIME);
+    });
+});
+
 const assertSchemaProperty = (key, value) => {
     switch (key) {
     case '@context':
@@ -95,11 +109,7 @@ export const peekSchema = async (identityDescriptor, orbitdb) => {
 
     // Wait for it to replicate if necessary
     if (!profile.getProperty('@context')) {
-        const replicate = new Promise((resolve) => {
-            orbitdbStore.events.on('replicated', resolve);
-        });
-
-        await pTimeout(replicate, MAX_REPLICATION_WAIT_TIME);
+        await waitStoreRepilcation(orbitdbStore);
     }
 
     // Drop the database as it might not get used
@@ -109,15 +119,25 @@ export const peekSchema = async (identityDescriptor, orbitdb) => {
 };
 
 export const createProfile = async (schema, identityDescriptor, orbitdb) => {
-    assertSchema(schema);
-
     const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
 
-    for await (const [key, value] of Object.entries(schema)) {
-        await orbitdbStore.put(key, value);
+    const profile = new Profile(orbitdbStore);
+
+    if (schema) {
+        assertSchema(schema);
+
+        for await (const [key, value] of Object.entries(schema)) {
+            await orbitdbStore.put(key, value);
+        }
+    } else {
+        try {
+            await waitStoreRepilcation(orbitdbStore);
+        } catch (err) {
+            console.log(`Identity profile replication failed or timed out for ${identityDescriptor.did}. Importing without profile details.`);
+        }
     }
 
-    return new Profile(orbitdbStore);
+    return profile;
 };
 
 export const restoreProfile = async (identityDescriptor, orbitdb) => {

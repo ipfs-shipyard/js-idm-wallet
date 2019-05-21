@@ -167,3 +167,9 @@ export class InvalidProfileUnsetPropertyError extends BaseError {
         super(`Cannot remove property from profile: ${property}`, 'INVALID_UNSET_PROFILE_PROPERTY');
     }
 }
+
+export class ProfileReplicationTimeoutError extends BaseError {
+    constructor() {
+        super('Profile schema replication timed out', 'PROFILE_REPLICATION_TIMEOUT');
+    }
+}
