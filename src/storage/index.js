@@ -54,7 +54,9 @@ class Storage {
 
         try {
             if (encrypt) {
-                value = await this.#encrypt(value, this.#secret.get());
+                const secret = await this.#secret.getAsync();
+
+                value = await this.#encrypt(value, secret);
             }
 
             value = JSON.stringify(value);
@@ -162,7 +164,9 @@ class Storage {
             return value;
         }
 
-        value = await this.#decrypt(value.cypherText, value.iv, this.#secret.get());
+        const secret = await this.#secret.getAsync();
+
+        value = await this.#decrypt(value.cypherText, value.iv, secret);
 
         return JSON.parse(value);
     }
