@@ -10,7 +10,7 @@ import { UnavailableIpfsError } from './utils/errors';
 
 const createIpfs = (ipfs) => {
     if (ipfs) {
-        if (!ipfs.isOnline || !ipfs.isOnline()) {
+        if (typeof ipfs.isOnline === 'function' && !ipfs.isOnline()) {
             throw new UnavailableIpfsError();
         }
 
@@ -22,6 +22,11 @@ const createIpfs = (ipfs) => {
             pass: keychainPass,
             EXPERIMENTAL: {
                 pubsub: true,
+            },
+            config: {
+                Addresses: {
+                    Swarm: ['/dns4/ws-star1.par.dwebops.pub/tcp/443/wss/p2p-websocket-star'],
+                },
             },
         });
 
