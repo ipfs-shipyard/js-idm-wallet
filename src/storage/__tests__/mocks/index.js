@@ -2,6 +2,7 @@ export const mockSecretValue = new Uint8Array([167, 112, 73, 173, 25, 22, 164, 1
 
 export const mockSecret = {
     get: jest.fn(() => mockSecretValue),
+    getAsync: jest.fn(async () => mockSecretValue),
 };
 
 export const mockEncryptCypherTextHex = '0129888B73D6C82F23EC79612C4D97A2A591BC9094DF83319C212CF324';
@@ -57,13 +58,13 @@ export class MockReadStream {
     };
 }
 
-export const mockGet = jest.fn((key) => Promise.resolve(`"${key}-value"`));
+export const mockGet = jest.fn(async (key) => `"${key}-value"`);
 
-export const mockPut = jest.fn(() => Promise.resolve());
+export const mockPut = jest.fn(async () => {});
 
-export const mockDel = jest.fn(() => Promise.resolve());
+export const mockDel = jest.fn(async () => {});
 
-export const mockBatch = jest.fn(() => Promise.resolve());
+export const mockBatch = jest.fn(async () => {});
 
 export const mockCreateReadStream = jest.fn((options) => new MockReadStream([
     { key: 1, value: '123' },
@@ -84,9 +85,9 @@ export const mockCreateLevel = (api) => jest.fn((location, options, callback) =>
 
 // AES-GCM Mocks ------------------------------------------
 
-export const mockEncrypt = jest.fn(() => Promise.resolve(mockEncryptedData));
+export const mockEncrypt = jest.fn(async () => mockEncryptedData);
 
-export const mockDecrypt = jest.fn(() => Promise.resolve(mockEncryptedDataBytes));
+export const mockDecrypt = jest.fn(async () => mockEncryptedDataBytes);
 
 export const mockCreateAesGcm = (api) => ({
     encrypt: mockEncrypt,

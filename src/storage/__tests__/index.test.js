@@ -34,7 +34,7 @@ describe('get', () => {
     });
 
     it('should get encrypted value correctly', async () => {
-        const mockGet = jest.fn(() => Promise.resolve(mocks.mockEncryptedDataStringified));
+        const mockGet = jest.fn(async () => mocks.mockEncryptedDataStringified);
 
         level.mockImplementationOnce(mocks.mockCreateLevel({ get: mockGet }));
         mocks.mockTextDecoder();
@@ -43,7 +43,7 @@ describe('get', () => {
 
         await expect(storage.get('foo')).resolves.toEqual({ foo: 'bar' });
 
-        expect(mocks.mockSecret.get).toHaveBeenCalledTimes(1);
+        expect(mocks.mockSecret.getAsync).toHaveBeenCalledTimes(1);
         expect(mocks.mockDecrypt).toHaveBeenCalledTimes(1);
         expect(mocks.mockDecrypt).toHaveBeenCalledWith(mocks.mockEncryptCypherTextBytes, mocks.mockEncryptCypherIvBytes, mocks.mockSecretValue);
         expect(mocks.mockDecode).toHaveBeenCalledTimes(1);

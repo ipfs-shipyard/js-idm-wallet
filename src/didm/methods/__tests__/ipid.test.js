@@ -1,17 +1,18 @@
-import { mockDocument, mockDidIpid } from './mocks';
+import { mockDid, mockDocument, mockKeyPair, mockDidIpid, mockHumanCryptoKeys, mockBackupData } from './mocks';
 import createDidIpid from 'did-ipid';
 import createIpid from '../ipid';
 
-jest.mock('did-ipid', () => ({
-    __esModule: true,
-    default: jest.fn((ipfs) => ({
-        ipfs,
-        resolve: mockDidIpid.resolve,
-        create: mockDidIpid.create,
-        update: mockDidIpid.update,
-    })),
-    getDid: mockDidIpid.getDid,
-}));
+jest.mock('did-ipid', () => {
+    const { getDid, ...rest } = mockDidIpid;
+
+    return {
+        __esModule: true,
+        getDid,
+        default: jest.fn(() => rest),
+    };
+});
+
+jest.mock('human-crypto-keys', () => mockHumanCryptoKeys);
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -35,12 +36,46 @@ it('should have all supported methods', async () => {
 
 describe('getDid', () => {
     it('should get did successfully', async () => {
-        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
+        const mockParams = { privateKey: mockKeyPair.privateKey };
         const ipid = createIpid();
 
-        await ipid.getDid({ masterKey: 'mockPrivateKey' });
+        const did = await ipid.getDid(mockParams);
 
-        expect(mockDidIpid.getDid).toHaveBeenCalledWith(mockParams.masterKey);
+        expect(did).toBe(mockDid);
+        expect(mockDidIpid.getDid).toHaveBeenCalledWith(mockParams.privateKey);
+    });
+
+    it('should support mnemonics', async () => {
+        const mockParams = { mnemonic: mockBackupData.mnemonic };
+        const ipid = createIpid();
+
+        const did = await ipid.getDid(mockParams);
+
+        expect(did).toBe(mockDid);
+        expect(mockDidIpid.getDid).toHaveBeenCalledWith(mockKeyPair.privateKey);
+    });
+
+    it('should support seeds', async () => {
+        const mockParams = { seed: mockBackupData.seed };
+        const ipid = createIpid();
+
+        const did = await ipid.getDid(mockParams);
+
+        expect(did).toBe(mockDid);
+        expect(mockDidIpid.getDid).toHaveBeenCalledWith(mockKeyPair.privateKey);
+    });
+
+    it('should fail if params are missing', async () => {
+        const ipid = createIpid();
+
+        expect.assertions(2);
+
+        try {
+            await ipid.getDid({});
+        } catch (err) {
+            expect(err.message).toBe('Please specify the privateKey, seed or mnemonic');
+            expect(err.code).toBe('MISSING_DID_PARAMETERS');
+        }
     });
 });
 
@@ -49,10 +84,11 @@ describe('resolve', () => {
         const mockIpfs = { foo: 'bar' };
         const ipid = createIpid(mockIpfs);
 
-        await ipid.resolve('did:ipid:foo');
+        const document = await ipid.resolve(mockDid);
 
+        expect(document).toEqual(mockDocument);
         expect(createDidIpid).toHaveBeenCalledWith(mockIpfs);
-        expect(mockDidIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
+        expect(mockDidIpid.resolve).toHaveBeenCalledWith(mockDid);
     });
 
     it('should fail if did ipid resolve is unsuccessful', async () => {
@@ -60,37 +96,39 @@ describe('resolve', () => {
 
         mockDidIpid.resolve.mockImplementationOnce(() => { throw new Error('bar'); });
 
-        await expect(ipid.resolve('did:ipid:foo')).rejects.toThrow('bar');
+        await expect(ipid.resolve(mockDid)).rejects.toThrow('bar');
     });
 });
 
 describe('create', () => {
     it('should create successfully', async () => {
         const mockOperations = jest.fn();
-        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
-        const document = await ipid.create(mockParams, mockOperations);
+        const { did, didDocument, backupData } = await ipid.create({}, mockOperations);
 
-        expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
+        expect(mockDidIpid.create).toHaveBeenCalledTimes(1);
+        expect(mockDidIpid.create.mock.calls[0][0]).toBe(mockKeyPair.privateKey);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toBe(mockDocument);
+        expect(did).toBe(mockDid);
+        expect(didDocument).toEqual(mockDocument);
+        expect(backupData).toEqual(backupData);
     });
 
     it('should fail if did-ipid create is unsuccessful', async () => {
-        expect.assertions(3);
+        expect.assertions(4);
 
         mockDidIpid.create.mockImplementationOnce(() => { throw new Error('bar'); });
 
         const mockOperations = jest.fn();
-        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
 
         const ipid = createIpid();
 
         try {
-            await ipid.create(mockParams, mockOperations);
+            await ipid.create({}, mockOperations);
         } catch (err) {
-            expect(mockDidIpid.create).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
+            expect(mockDidIpid.create).toHaveBeenCalledTimes(1);
+            expect(mockDidIpid.create.mock.calls[0][0]).toBe(mockKeyPair.privateKey);
             expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }
@@ -100,15 +138,37 @@ describe('create', () => {
 describe('update', () => {
     it('should update successfully', async () => {
         const mockOperations = jest.fn();
-        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
-        const mockDid = 'did:ipid:foo';
+        const mockParams = { privateKey: mockKeyPair.privateKey };
 
         const ipid = createIpid();
-        const document = await ipid.update(mockDid, mockParams, mockOperations);
+        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
 
-        expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
+        expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(document).toBe(mockDocument);
+        expect(did).toBe(mockDid);
+        expect(didDocument).toEqual(mockDocument);
+    });
+
+    it('should support mnemonics', async () => {
+        const mockOperations = () => {};
+        const mockParams = { mnemonic: mockBackupData.mnemonic };
+
+        const ipid = createIpid();
+        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
+
+        expect(did).toBe(mockDid);
+        expect(didDocument).toEqual(mockDocument);
+    });
+
+    it('should support seeds', async () => {
+        const mockOperations = () => {};
+        const mockParams = { seed: mockBackupData.seed };
+
+        const ipid = createIpid();
+        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
+
+        expect(did).toBe(mockDid);
+        expect(didDocument).toEqual(mockDocument);
     });
 
     it('should fail if did-ipid update is unsuccessful', async () => {
@@ -117,15 +177,14 @@ describe('update', () => {
         mockDidIpid.update.mockImplementationOnce(() => { throw new Error('bar'); });
 
         const mockOperations = jest.fn();
-        const mockParams = { masterKey: 'mockPrivateKey', foo: 'bar' };
-        const mockDid = 'did:ipid:foo';
+        const mockParams = { privateKey: mockKeyPair.privateKey };
 
         const ipid = createIpid();
 
         try {
             await ipid.update(mockDid, mockParams, mockOperations);
         } catch (err) {
-            expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.masterKey, mockOperations);
+            expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
             expect(mockOperations).toHaveBeenCalledTimes(0);
             expect(err.message).toBe('bar');
         }
@@ -137,20 +196,20 @@ describe('isPublicKeyValid', () => {
         mockDidIpid.resolve.mockImplementationOnce(() => ({ ...mockDocument, publicKey: [{ id: 'bar' }] }));
 
         const ipid = createIpid();
-        const isValid = await ipid.isPublicKeyValid('did:ipid:foo', 'bar');
+        const isValid = await ipid.isPublicKeyValid(mockDid, 'bar');
 
         expect(isValid).toBe(true);
-        expect(mockDidIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
+        expect(mockDidIpid.resolve).toHaveBeenCalledWith(mockDid);
     });
 
     it('should fail if public key no available in the document', async () => {
         mockDidIpid.resolve.mockImplementationOnce(() => ({ ...mockDocument }));
 
         const ipid = createIpid();
-        const isValid = await ipid.isPublicKeyValid('did:ipid:foo', 'bar');
+        const isValid = await ipid.isPublicKeyValid(mockDid, 'bar');
 
         expect(isValid).toBe(false);
-        expect(mockDidIpid.resolve).toHaveBeenCalledWith('did:ipid:foo');
+        expect(mockDidIpid.resolve).toHaveBeenCalledWith(mockDid);
     });
 
     it('should fail if resolve is unsuccessful', async () => {
@@ -158,16 +217,16 @@ describe('isPublicKeyValid', () => {
 
         const ipid = createIpid();
 
-        await expect(ipid.isPublicKeyValid('did:ipid:foo', 'bar')).rejects.toThrow('bar');
+        await expect(ipid.isPublicKeyValid(mockDid, 'bar')).rejects.toThrow('bar');
     });
 });
 
 it('should use the same did-ipid instance for multiple purposes', async () => {
     const ipid = createIpid({});
 
-    await ipid.resolve('did:ipid:foo');
-    await ipid.create({}, jest.fn());
-    await ipid.update('did:ipid:foo', {}, jest.fn());
+    await ipid.resolve(mockDid);
+    await ipid.create({}, () => {});
+    await ipid.update(mockDid, { privateKey: mockKeyPair.privateKey }, () => {});
 
     expect(mockDidIpid.resolve).toHaveBeenCalledTimes(1);
     expect(mockDidIpid.create).toHaveBeenCalledTimes(1);

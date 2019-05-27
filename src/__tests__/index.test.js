@@ -19,7 +19,6 @@ it('should create wallet successfully', async () => {
 
     expect(Object.keys(wallet)).toEqual(['didm', 'storage', 'locker', 'identities']);
     expect(Ipfs).toHaveBeenCalledTimes(1);
-    expect(Ipfs).toHaveBeenCalledWith({ pass: 'K52XQ7K0FPR1DF01RM0L' });
 });
 
 it('should throw if storage creation fails', async () => {
@@ -74,4 +73,3 @@ it('should fail if provided ipfs node is not online', async () => {
         expect(err.code).toBe('IPFS_UNAVAILABLE');
     }
 });
-

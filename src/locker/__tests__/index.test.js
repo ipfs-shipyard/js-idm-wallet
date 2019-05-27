@@ -7,6 +7,7 @@ const mockStorage = {};
 const mockSecret = {
     has: jest.fn(() => false),
     get: jest.fn(() => 'a1b2c3'),
+    getAsync: jest.fn(async () => 'a1b2c3'),
     unset: jest.fn(),
     generate: jest.fn(),
     onDefinedChange: jest.fn(),
@@ -271,4 +272,3 @@ describe('handleMasterLockEnabledChange', () => {
         expect(mockIdleTimer.restart).toBeCalledTimes(2);
     });
 });
-

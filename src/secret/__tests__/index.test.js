@@ -29,6 +29,19 @@ describe('set & get', () => {
     });
 });
 
+describe('getAsync', () => {
+    it('should resolve when the value is set', () => {
+        const secret = createSecret();
+        const mockSecret = new Uint8Array([1, 2, 3]);
+
+        const promise = secret.getAsync();
+
+        secret.set(mockSecret);
+
+        expect(promise).resolves.toBe(mockSecret);
+    });
+});
+
 describe('has', () => {
     it('should return true if secret is set', () => {
         const secret = createSecret();
