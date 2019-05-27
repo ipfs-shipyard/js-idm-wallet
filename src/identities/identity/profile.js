@@ -1,65 +1,118 @@
 import signal from 'pico-signals';
-import { InvalidProfilePropertyError, InvalidProfileUnsetPropertyError, ProfileReplicationTimeoutError } from '../../utils/errors';
-import openOrbitdbStore from './utils/orbitdb-stores';
+import { pick, get, isPlainObject } from 'lodash';
+import {
+    InvalidProfilePropertyError,
+    InvalidProfileUnsetPropertyError,
+    ProfileReplicationTimeoutError,
+    UnsupportedProfilePropertyError,
+} from '../../utils/errors';
+import createBlobStore from './utils/blob-store';
+import { loadStore, dropStore, dropOrbitDbIfEmpty } from './utils/orbitdb';
 
 const PROFILE_TYPES = ['Person', 'Organization', 'Thing'];
-const SCHEMA_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
-const MAX_REPLICATION_WAIT_TIME = 60000;
+const PROFILE_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
+const PROFILE_BLOB_PROPERTIES = ['image'];
+const PEEK_REPLICATION_WAIT_TIME = 60000;
+const PEEK_DROP_DELAY = 60000 * 3;
+const ORBITDB_STORE_NAME = 'profile';
+const ORBITDB_STORE_TYPE = 'keyvalue';
+
+const peekDropStoreTimers = new Map();
 
 class Profile {
+    #ipfs;
     #orbitdbStore;
+    #blobStore;
+
+    #details;
     #onChange = signal();
 
-    constructor(orbitdbStore) {
+    constructor(ipfs, orbitdbStore) {
+        this.#ipfs = ipfs;
+
         this.#orbitdbStore = orbitdbStore;
+        this.#orbitdbStore.events.on('write', this.#handleOrbitdbStoreChange);
+        this.#orbitdbStore.events.on('replicated', this.#handleOrbitdbStoreChange);
 
-        this.#orbitdbStore.events.on('write', this.#handleStoreChange);
-        this.#orbitdbStore.events.on('replicated', this.#handleStoreChange);
-    }
+        this.#blobStore = createBlobStore(ipfs);
+        this.#blobStore.onChange(this.#handleBlobStoreChange);
 
-    toSchema() {
-        return this.#orbitdbStore.all;
+        this.#syncBlobStore();
+        this.#updateDetails();
     }
 
     getProperty(key) {
-        return this.#orbitdbStore.get(key);
+        return this.#blobStore.get(key) || this.#orbitdbStore.get(key);
     }
 
     async setProperty(key, value) {
-        assertSchemaProperty(key, value);
+        assertProfileProperty(key, value);
+
+        if (PROFILE_BLOB_PROPERTIES.includes(key)) {
+            const blobRef = await this.#blobStore.put(key, value);
+
+            value = pick(blobRef, 'type', 'hash');
+        }
 
         await this.#orbitdbStore.put(key, value);
     }
 
     async unsetProperty(key) {
-        if (SCHEMA_MANDATORY_PROPERTIES.includes(key)) {
+        if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
             throw new InvalidProfileUnsetPropertyError(key);
         }
 
         await this.#orbitdbStore.del(key);
     }
 
+    getDetails() {
+        return this.#details;
+    }
+
     onChange(fn) {
         return this.#onChange.add(fn);
     }
 
-    #handleStoreChange = () => {
-        this.#onChange.dispatch(this.toSchema());
+    #syncBlobStore = () => {
+        const blobRefs = pick(this.#orbitdbStore.all, PROFILE_BLOB_PROPERTIES);
+
+        this.#blobStore.sync(blobRefs);
+    }
+
+    #updateDetails = () => {
+        this.#details = { ...this.#orbitdbStore.all };
+
+        PROFILE_BLOB_PROPERTIES.forEach((key) => {
+            if (this.#details[key]) {
+                const blob = this.#blobStore.get(key);
+
+                this.#details[key] = get(blob, 'content.dataUri', null);
+            }
+        });
+
+        this.#onChange.dispatch(this.#details);
+    }
+
+    #handleOrbitdbStoreChange = () => {
+        this.#syncBlobStore();
+        this.#updateDetails();
+    }
+
+    #handleBlobStoreChange = (key, blobRef) => {
+        if (blobRef.content.status === 'fulfilled') {
+            this.#updateDetails();
+        }
     }
 }
 
-const loadOrbitdbStore = async (orbitdb, identityId) => {
-    const store = await openOrbitdbStore(orbitdb, identityId, 'profile', 'keyvalue');
+const waitStoreReplication = (orbitdbStore) => new Promise((resolve, reject) => {
+    if (orbitdbStore.get('@context')) {
+        return resolve();
+    }
 
-    await store.load();
-
-    return store;
-};
-
-const waitStoreRepilcation = (orbitdbStore) => new Promise((resolve, reject) => {
     const rejectWithError = () => reject(new ProfileReplicationTimeoutError());
 
-    let timeout = setTimeout(rejectWithError, MAX_REPLICATION_WAIT_TIME);
+    let timeout = setTimeout(rejectWithError, PEEK_REPLICATION_WAIT_TIME);
 
     orbitdbStore.events.on('replicated', () => {
         clearTimeout(timeout);
@@ -67,87 +120,125 @@ const waitStoreRepilcation = (orbitdbStore) => new Promise((resolve, reject) => 
     });
     orbitdbStore.events.on('replicate.progress', () => {
         clearTimeout(timeout);
-        timeout = setTimeout(rejectWithError, MAX_REPLICATION_WAIT_TIME);
+        timeout = setTimeout(rejectWithError, PEEK_REPLICATION_WAIT_TIME);
     });
 });
 
-const assertSchemaProperty = (key, value) => {
+const peekDropStore = (identityId, orbitdb, orbitdbStore) => {
+    const timeoutId = setTimeout(async () => {
+        try {
+            await orbitdbStore.drop();
+            await dropOrbitDbIfEmpty();
+        } catch (err) {
+            console.warn(`Unable to drop profile OrbitDB store for identity after peeking: ${identityId.id}`);
+        }
+    }, PEEK_DROP_DELAY);
+
+    peekDropStoreTimers.set(orbitdbStore, timeoutId);
+};
+
+const cancelPeekDropStore = (orbitdbStore) => {
+    const timeoutId = peekDropStoreTimers.get(orbitdbStore);
+
+    clearTimeout(timeoutId);
+    peekDropStoreTimers.delete(orbitdbStore);
+};
+
+const assertProfileProperty = (key, value) => {
     switch (key) {
     case '@context':
         if (value !== 'https://schema.org') {
-            throw new InvalidProfilePropertyError('@context', value);
+            throw new InvalidProfilePropertyError(key, value);
         }
         break;
     case '@type':
         if (!PROFILE_TYPES.includes(value)) {
-            throw new InvalidProfilePropertyError('@type', value);
+            throw new InvalidProfilePropertyError(key, value);
         }
         break;
     case 'name':
         if (typeof value !== 'string' || !value.trim()) {
-            throw new InvalidProfilePropertyError('name', value);
+            throw new InvalidProfilePropertyError(key, value);
         }
         break;
-    default:
+    case 'image': {
+        if (!isPlainObject(value)) {
+            throw new InvalidProfilePropertyError(key, value);
+        }
+        if (typeof value.type !== 'string') {
+            throw new InvalidProfilePropertyError(`${key}.type`, value);
+        }
+
+        const typeParts = value.type.split('/');
+
+        if (typeParts.length !== 2 || typeParts[0] !== 'image') {
+            throw new InvalidProfilePropertyError(`${key}.type`, value);
+        }
+        if (!(value.data instanceof ArrayBuffer)) {
+            throw new InvalidProfilePropertyError(`${key}.data`, value);
+        }
         break;
+    }
+    default:
+        throw new UnsupportedProfilePropertyError(key);
     }
 };
 
-export const assertSchema = (schema) => {
-    SCHEMA_MANDATORY_PROPERTIES.forEach((property) => {
-        if (schema[property] == null) {
-            throw new InvalidProfilePropertyError(property, schema[property]);
+export const assertProfileDetails = (details) => {
+    PROFILE_MANDATORY_PROPERTIES.forEach((property) => {
+        if (details[property] == null) {
+            throw new InvalidProfilePropertyError(property, details[property]);
         }
     });
 
-    Object.entries(schema).forEach(([key, value]) => assertSchemaProperty(key, value));
+    Object.entries(details).forEach(([key, value]) => assertProfileProperty(key, value));
 };
 
-export const peekSchema = async (identityDescriptor, orbitdb) => {
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
-    const profile = new Profile(orbitdbStore);
+export const peekProfileDetails = async (identityDescriptor, ipfs, orbitdb) => {
+    const orbitdbStore = await loadStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
+
+    cancelPeekDropStore(orbitdbStore);
 
     // Wait for it to replicate if necessary
-    if (!profile.getProperty('@context')) {
-        await waitStoreRepilcation(orbitdbStore);
-    }
+    await waitStoreReplication(orbitdbStore);
 
-    // Drop the database as it might not get used
-    await orbitdbStore.drop();
+    // To allow a fast import of the identity, we delay the drop of the DB
+    peekDropStore(identityDescriptor.id, orbitdb, orbitdbStore);
 
-    return profile.toSchema();
+    const profile = new Profile(ipfs, orbitdbStore);
+
+    return profile.getDetails();
 };
 
-export const createProfile = async (schema, identityDescriptor, orbitdb) => {
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
+export const createProfile = async (details, identityDescriptor, ipfs, orbitdb) => {
+    const orbitdbStore = await loadStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
+    const profile = new Profile(ipfs, orbitdbStore);
 
-    const profile = new Profile(orbitdbStore);
+    cancelPeekDropStore(orbitdbStore);
 
-    if (schema) {
-        assertSchema(schema);
-
-        for await (const [key, value] of Object.entries(schema)) {
-            await orbitdbStore.put(key, value);
+    if (details) {
+        for (const [key, value] of Object.entries(details)) {
+            await profile.setProperty(key, value); // eslint-disable-line no-await-in-loop
         }
     } else {
         try {
-            await waitStoreRepilcation(orbitdbStore);
+            await waitStoreReplication(orbitdbStore);
         } catch (err) {
-            console.log(`Identity profile replication failed or timed out for ${identityDescriptor.did}. Importing without profile details.`);
+            console.warn(`Identity profile replication failed or timed out for: ${identityDescriptor.id}`);
         }
     }
 
     return profile;
 };
 
-export const restoreProfile = async (identityDescriptor, orbitdb) => {
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
+export const restoreProfile = async (identityDescriptor, ipfs, orbitdb) => {
+    const orbitdbStore = await loadStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 
-    return new Profile(orbitdbStore);
+    cancelPeekDropStore(orbitdbStore);
+
+    return new Profile(ipfs, orbitdbStore);
 };
 
-export const removeProfile = async (identityDescriptor, orbitdb) => {
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
-
-    await orbitdbStore.drop();
+export const removeProfile = async (identityDescriptor, ipfs, orbitdb) => {
+    await dropStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 };

@@ -137,7 +137,7 @@ class WalletContent extends Component {
                     did: identity.getDid(),
                     devices: identity.devices.list(),
                     backup: identity.backup.getData(),
-                    profile: identity.profile.toSchema(),
+                    profile: identity.profile.getDetails(),
                 });
                 console.log(' ');
             });
@@ -151,7 +151,7 @@ class WalletContent extends Component {
         const { wallet } = this.props;
 
         wallet.identities.create('ipid', {
-            schema: {
+            profileDetails: {
                 '@context': 'https://schema.org',
                 '@type': 'Person',
                 name: 'John Doe',
@@ -170,7 +170,7 @@ class WalletContent extends Component {
                 did: identity.getDid(),
                 devices: identity.devices.list(),
                 backup: identity.backup.getData(),
-                profile: identity.profile.toSchema(),
+                profile: identity.profile.getDetails(),
             });
             console.log(' ');
             console.log('End of Created Identity.')

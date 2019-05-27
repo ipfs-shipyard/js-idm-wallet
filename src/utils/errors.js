@@ -132,12 +132,6 @@ export class UnableCreateIdentityError extends BaseError {
     }
 }
 
-export class InvalidBackupPropertyError extends BaseError {
-    constructor(property, value) {
-        super(`Invalid backup ${property}: ${value}`, 'INVALID_BACKUP_PROPERTY');
-    }
-}
-
 export class InvalidDevicePropertyError extends BaseError {
     constructor(property, value) {
         super(`Invalid device ${property}: ${value}`, 'INVALID_DEVICE_PROPERTY');
@@ -146,7 +140,7 @@ export class InvalidDevicePropertyError extends BaseError {
 
 export class UnknownDeviceError extends BaseError {
     constructor(id) {
-        super(`Unknown device with: ${id}`, 'UNKNOWN_DEVICE');
+        super(`Unknown device with id: ${id}`, 'UNKNOWN_DEVICE');
     }
 }
 
@@ -162,6 +156,12 @@ export class InvalidProfilePropertyError extends BaseError {
     }
 }
 
+export class UnsupportedProfilePropertyError extends BaseError {
+    constructor(property) {
+        super(`Property ${property} is not yet supported`, 'UNSUPPORTED_PROFILE_PROPERTY');
+    }
+}
+
 export class InvalidProfileUnsetPropertyError extends BaseError {
     constructor(property) {
         super(`Cannot remove property from profile: ${property}`, 'INVALID_UNSET_PROFILE_PROPERTY');
@@ -170,6 +170,12 @@ export class InvalidProfileUnsetPropertyError extends BaseError {
 
 export class ProfileReplicationTimeoutError extends BaseError {
     constructor() {
-        super('Profile schema replication timed out', 'PROFILE_REPLICATION_TIMEOUT');
+        super('Profile replication timed out', 'PROFILE_REPLICATION_TIMEOUT');
+    }
+}
+
+export class MissingDidParameters extends BaseError {
+    constructor(message) {
+        super(message, 'MISSING_DID_PARAMETERS');
     }
 }

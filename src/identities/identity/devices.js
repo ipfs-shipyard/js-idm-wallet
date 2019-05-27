@@ -1,122 +1,142 @@
 import signal from 'pico-signals';
-import { reduce, omit, pick } from 'lodash';
+import { omit, pick } from 'lodash';
+import { composePrivateKey, composePublicKey, decomposePrivateKey, decomposePublicKey } from 'crypto-key-composer';
 import { InvalidDevicePropertyError, UnknownDeviceError, InvalidDeviceOperationError } from '../../utils/errors';
+import { sha256 } from '../../utils/sha';
 import { getCurrentDeviceKey } from './utils/storage-keys';
-import openOrbitdbStore from './utils/orbitdb-stores';
+import { loadStore, dropStore } from './utils/orbitdb';
 
+const DID_PUBLIC_KEY_PREFIX = 'idm-device-';
 const DEVICE_TYPES = ['phone', 'tablet', 'laptop', 'desktop'];
-
-export const DEVICE_ID_PREFIX = 'idm-device-';
+const ORBITDB_STORE_NAME = 'devices';
+const ORBITDB_STORE_TYPE = 'keyvalue';
 
 class Devices {
-    #currentDevice;
+    #currentDeviceDescriptor;
     #identityDescriptor;
     #didm;
     #orbitdbStore;
-    #onChange = signal();
 
-    constructor(currentDevice, identityDescriptor, didm, orbitdbStore) {
-        this.#currentDevice = currentDevice;
+    #devicesMap;
+    #devicesList;
+    #onChange = signal();
+    #onCurrentRevoke = signal();
+
+    constructor(currentDeviceDescriptor, identityDescriptor, didm, orbitdbStore) {
+        this.#currentDeviceDescriptor = currentDeviceDescriptor;
         this.#identityDescriptor = identityDescriptor;
         this.#didm = didm;
         this.#orbitdbStore = orbitdbStore;
 
-        this.#orbitdbStore.events.on('write', this.#handleStoreChange);
-        this.#orbitdbStore.events.on('replicated', this.#handleStoreChange);
+        this.#orbitdbStore.events.on('write', this.#handleOrbitdbStoreChange);
+        this.#orbitdbStore.events.on('replicated', this.#handleOrbitdbStoreChange);
+
+        this.#updateDevices();
     }
 
     list() {
-        const obj = this.#orbitdbStore.all;
-        const list = reduce(obj, (list, value, key) => {
-            if (key === this.#currentDevice.id) {
-                list.push(this.#buildCurrentDevice(value));
-            } else {
-                list.push(value);
-            }
-
-            return list;
-        }, []);
-
-        // Sort by most recently added
-        list.sort((device1, device2) => device2.createdAt - device1.createdAt);
-
-        return list;
+        return this.#devicesList;
     }
 
     getCurrent() {
-        return this.get(this.#currentDevice.id);
+        return this.get(this.#currentDeviceDescriptor.id);
     }
 
     get(id) {
-        const device = this.#orbitdbStore.get(id);
+        const device = this.#devicesMap[id];
 
         if (!device) {
             throw new UnknownDeviceError(id);
-        }
-
-        if (this.#currentDevice.id === id) {
-            return this.#buildCurrentDevice(device);
         }
 
         return device;
     }
 
     async revoke(id, params) {
-        if (id === this.#currentDevice.id) {
-            throw new InvalidDeviceOperationError('Revoking own device is not allowed, please use identities.remove() instead');
-        }
-
-        // Remove device from DID Document and only then remove it from orbitdb
-        await this.#didm.update(this.#identityDescriptor.did, params, (document) => {
-            document.revokePublicKey(id);
-        });
-
-        await this.#orbitdbStore.del(id);
-    }
-
-    async update(id, deviceInfo) {
-        const device = this.#orbitdbStore.get(id);
+        const device = this.#devicesMap[id];
 
         if (!device) {
             throw new UnknownDeviceError(id);
         }
 
-        const updatedDevice = {
+        if (id === this.#currentDeviceDescriptor.id) {
+            throw new InvalidDeviceOperationError('Revoking own device is not allowed');
+        }
+
+        if (!device.revokedAt) {
+            // Remove device from DID Document and only then remove it from orbitdb
+            await this.#didm.update(this.#identityDescriptor.did, params, (document) => {
+                document.revokePublicKey(`${DID_PUBLIC_KEY_PREFIX}${id}`);
+            });
+
+            await this.#orbitdbStore.put(id, {
+                ...device,
+                revokedAt: Date.now(),
+            });
+        }
+    }
+
+    async updateInfo(id, deviceInfo) {
+        assertDeviceInfo(deviceInfo);
+
+        const device = this.#devicesMap[id];
+
+        if (!device) {
+            throw new UnknownDeviceError(id);
+        }
+
+        await this.#orbitdbStore.put(id, {
             ...device,
             ...pick(deviceInfo, 'type', 'name'),
             updatedAt: Date.now(),
-        };
-
-        assertDevice(updatedDevice);
-
-        await this.#orbitdbStore.put(id, updatedDevice);
+        });
     }
 
     onChange(fn) {
         return this.#onChange.add(fn);
     }
 
-    #buildCurrentDevice = (device) => ({ ...device, ...this.#currentDevice })
+    onCurrentRevoke(fn) {
+        return this.#onCurrentRevoke.add(fn);
+    }
 
-    #handleStoreChange = () => {
-        this.#onChange.dispatch(this.list());
+    #updateDevices = () => {
+        this.#devicesMap = { ...this.#orbitdbStore.all };
+
+        const currentId = this.#currentDeviceDescriptor.id;
+
+        if (this.#devicesMap[currentId]) {
+            this.#devicesMap[currentId] = {
+                ...this.#devicesMap[currentId],
+                privateKey: this.#currentDeviceDescriptor.privateKey,
+            };
+        }
+
+        this.#devicesList = Object.values(this.#devicesMap);
+        this.#devicesList.sort((device1, device2) => device2.createdAt - device1.createdAt);
+
+        this.#onChange.dispatch(this.#devicesList);
+    }
+
+    #handleOrbitdbStoreChange = () => {
+        const isCurrentDeviceRevoked = this.#isCurrentDeviceRevoked();
+
+        this.#updateDevices();
+
+        if (!isCurrentDeviceRevoked && this.#isCurrentDeviceRevoked()) {
+            this.#onCurrentRevoke.dispatch();
+        }
+    }
+
+    #isCurrentDeviceRevoked = () => {
+        const { id } = this.#currentDeviceDescriptor;
+
+        return !this.#devicesMap[id] || !!this.#devicesMap[id].revokedAt;
     }
 }
 
-const loadOrbitdbStore = async (orbitdb, identityId) => {
-    const store = await openOrbitdbStore(orbitdb, identityId, 'devices', 'keyvalue');
-
-    await store.load();
-
-    return store;
-};
-
-const assertDevice = (device, current = false) => {
-    const { id, type, name, publicKey, privateKey } = device;
-
-    if (!id || typeof id !== 'string' || !id.includes(DEVICE_ID_PREFIX)) {
-        throw new InvalidDevicePropertyError('id', id);
-    }
+export const assertDeviceInfo = (device) => {
+    const { type, name } = device;
 
     if (!DEVICE_TYPES.includes(type)) {
         throw new InvalidDevicePropertyError('type', type);
@@ -125,42 +145,71 @@ const assertDevice = (device, current = false) => {
     if (!name || typeof name !== 'string') {
         throw new InvalidDevicePropertyError('name', name);
     }
-
-    if (!publicKey) {
-        throw new InvalidDevicePropertyError('publicKey', publicKey);
-    }
-
-    if (current && !privateKey) {
-        throw new InvalidDevicePropertyError('privateKey', privateKey);
-    }
 };
 
-export const assertCurrentDevice = (currentDevice) => assertDevice(currentDevice, true);
+export const generateCurrentDevice = async (deviceInfo) => {
+    const cryptoKeyPair = await crypto.subtle.generateKey(
+        {
+            name: 'RSASSA-PKCS1-v1_5',
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([0x01, 0x00, 0x01]),
+            hash: { name: 'SHA-256' },
+        },
+        true,
+        ['sign', 'verify']
+    );
+
+    const [exportedPrivateKey, exportedPublicKey] = await Promise.all([
+        crypto.subtle.exportKey('pkcs8', cryptoKeyPair.privateKey),
+        crypto.subtle.exportKey('spki', cryptoKeyPair.publicKey),
+    ]);
+
+    const privateKey = composePrivateKey({ ...decomposePrivateKey(exportedPrivateKey, { format: 'pkcs8-der' }), format: 'pkcs8-pem' });
+    const publicKey = composePublicKey({ ...decomposePublicKey(exportedPublicKey, { format: 'spki-der' }), format: 'spki-pem' });
+    const id = await sha256(publicKey);
+
+    const currentDevice = {
+        id,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        revokedAt: null,
+        ...pick(deviceInfo, 'type', 'name'),
+        keyType: 'RsaVerificationKey2018',
+        privateKey,
+        publicKey,
+    };
+
+    const didPublicKey = {
+        id: `${DID_PUBLIC_KEY_PREFIX}${id}`,
+        type: 'RsaVerificationKey2018',
+        publicKeyPem: publicKey,
+    };
+
+    return {
+        currentDevice,
+        didPublicKey,
+    };
+};
 
 export const createDevices = async (currentDevice, identityDescriptor, didm, storage, orbitdb) => {
-    assertCurrentDevice(currentDevice);
-
     const currentDeviceWithoutPrivateKey = omit(currentDevice, 'privateKey');
-    const currentDeviceDescriptor = pick(currentDevice, 'id', 'publicKey', 'privateKey');
+    const currentDeviceDescriptor = pick(currentDevice, 'id', 'privateKey');
+    const orbitdbStore = await loadStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
-
-    await orbitdbStore.put(currentDevice.id, currentDeviceWithoutPrivateKey);
     await storage.set(getCurrentDeviceKey(identityDescriptor.id), currentDeviceDescriptor, { encrypt: true });
+    await orbitdbStore.put(currentDeviceDescriptor.id, currentDeviceWithoutPrivateKey);
 
     return new Devices(currentDevice, identityDescriptor, didm, orbitdbStore);
 };
 
 export const restoreDevices = async (identityDescriptor, didm, storage, orbitdb) => {
-    const currentDevice = await storage.get(getCurrentDeviceKey(identityDescriptor.id));
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
+    const currentDeviceDescriptor = await storage.get(getCurrentDeviceKey(identityDescriptor.id));
+    const orbitdbStore = await loadStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 
-    return new Devices(currentDevice, identityDescriptor, didm, orbitdbStore);
+    return new Devices(currentDeviceDescriptor, identityDescriptor, didm, orbitdbStore);
 };
 
 export const removeDevices = async (identityDescriptor, didm, storage, orbitdb) => {
-    const orbitdbStore = await loadOrbitdbStore(orbitdb, identityDescriptor.id);
-
-    await orbitdbStore.drop();
     await storage.remove(getCurrentDeviceKey(identityDescriptor.id));
+    await dropStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 };

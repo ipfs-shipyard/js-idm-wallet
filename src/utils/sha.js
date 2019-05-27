@@ -1,9 +1,11 @@
-export const sha256 = async (text) => {
-    // Encode as UTF-8
-    const msgBuffer = new TextEncoder('utf-8').encode(text);
+export const sha256 = async (input) => {
+    // Encode as UTF-8 to obtain an ArrayBuffer if input is a string
+    if (typeof input === 'string') {
+        input = new TextEncoder('utf-8').encode(input);
+    }
 
     // Hash the message
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', input);
 
     // Convert ArrayBuffer to Array
     const hashArray = Array.from(new Uint8Array(hashBuffer));

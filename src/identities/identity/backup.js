@@ -1,17 +1,17 @@
 import signal from 'pico-signals';
-import { InvalidBackupPropertyError } from '../../utils/errors';
 import { getBackupKey } from './utils/storage-keys';
 
 class Backup {
-    #data
-    #key
-    #storage
+    #data;
+    #identityDescriptor;
+    #storage;
 
     #onComplete = signal();
 
-    constructor(data, key, storage) {
+    constructor(data, identityDescriptor, storage) {
+        window.backup = this;
         this.#data = data;
-        this.#key = key;
+        this.#identityDescriptor = identityDescriptor;
         this.#storage = storage;
     }
 
@@ -28,7 +28,7 @@ class Backup {
             return;
         }
 
-        await this.#storage.remove(this.#key);
+        await this.#storage.remove(getBackupKey(this.#identityDescriptor.id));
 
         this.#data = undefined;
         this.#onComplete.dispatch();
@@ -39,31 +39,20 @@ class Backup {
     }
 }
 
-export const assertBackupData = (data) => {
-    const { mnemonic } = data;
-
-    if (!mnemonic || typeof mnemonic !== 'string' || mnemonic.split(' ').length !== 12) {
-        throw new InvalidBackupPropertyError('mnemonic', mnemonic);
-    }
-};
-
 export const createBackup = async (data, identityDescriptor, storage) => {
-    const key = getBackupKey(identityDescriptor.id);
-
-    if (data != null) {
-        assertBackupData(data);
-
-        await storage.set(key, data, { encrypt: true });
+    if (data) {
+        await storage.set(getBackupKey(identityDescriptor.id), data, { encrypt: true });
     }
 
-    return new Backup(data, key, storage);
+    return new Backup(data, identityDescriptor, storage);
 };
 
 export const restoreBackup = async (identityDescriptor, storage) => {
-    const key = getBackupKey(identityDescriptor.id);
-    const data = await storage.get(key);
+    const data = await storage.get(getBackupKey(identityDescriptor.id));
 
-    return new Backup(data, key, storage);
+    return new Backup(data, identityDescriptor, storage);
 };
 
-export const removeBackup = async (identityDescriptor, storage) => storage.remove(getBackupKey(identityDescriptor.id));
+export const removeBackup = async (identityDescriptor, storage) => {
+    storage.remove(getBackupKey(identityDescriptor.id));
+};

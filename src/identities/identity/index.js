@@ -1,21 +1,38 @@
 import pReduce from 'p-reduce';
-import { createDevices, restoreDevices, removeDevices, assertCurrentDevice, DEVICE_ID_PREFIX } from './devices';
-import { createBackup, restoreBackup, removeBackup, assertBackupData } from './backup';
-import { createProfile, restoreProfile, removeProfile, assertSchema, peekSchema } from './profile';
-import { isDidValid } from '../../utils/did';
+import signal from 'pico-signals';
 import { sha256 } from '../../utils/sha';
-import { InvalidIdentityPropertyError, UnableCreateIdentityError } from '../../utils/errors';
+import { UnableCreateIdentityError } from '../../utils/errors';
 import { getDescriptorKey, DESCRIPTOR_KEY_PREFIX } from './utils/storage-keys';
+import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb';
+import * as devicesFns from './devices';
+import * as backupFns from './backup';
+import * as profileFns from './profile';
 
 class Identity {
     #descriptor;
+    #storage;
+    #orbitdb;
 
-    constructor(descriptor, devices, backup, profile) {
+    backup;
+    devices;
+    profile;
+
+    #onRevoke = signal();
+
+    constructor(descriptor, storage, orbitdb, devices, backup, profile) {
         this.#descriptor = descriptor;
+        this.#storage = storage;
+        this.#orbitdb = orbitdb;
 
         this.backup = backup;
         this.devices = devices;
         this.profile = profile;
+
+        this.devices.onCurrentRevoke(this.#handleDevicesCurrentRevoke);
+
+        if (this.devices.getCurrent().revokedAt && !this.isRevoked()) {
+            setTimeout(this.#handleDevicesCurrentRevoke, 10);
+        }
     }
 
     getAddedAt() {
@@ -29,38 +46,70 @@ class Identity {
     getDid() {
         return this.#descriptor.did;
     }
+
+    isRevoked() {
+        return this.#descriptor.revoked;
+    }
+
+    onRevoke(fn) {
+        return this.#onRevoke.add(fn);
+    }
+
+    #handleDevicesCurrentRevoke = async () => {
+        const key = getDescriptorKey(this.#descriptor.id);
+
+        this.#descriptor.revoked = true;
+
+        try {
+            await this.#storage.set(key, this.#descriptor, { encrypt: true });
+        } catch (err) {
+            console.warn(`Unable to mark identity as revoked: ${this.#descriptor.id}`);
+        }
+
+        // Stop replication
+        try {
+            await stopOrbitDbReplication(this.#orbitdb);
+        } catch (err) {
+            console.warn(`Unable to stop OrbitDB replication after identity has been revoked: ${this.#descriptor.id}`);
+        }
+
+        this.#onRevoke.dispatch();
+    }
 }
 
-const assertIdentityDid = (did) => {
-    if (!isDidValid(did)) {
-        throw new InvalidIdentityPropertyError('did', did);
-    }
+export const peekProfileDetails = async (did, ipfs) => {
+    const id = await sha256(did);
+    const descriptor = {
+        id,
+        did,
+        addedAt: Date.now(),
+        revoked: false,
+    };
+
+    const orbitdb = await getOrbitDb(id, ipfs);
+
+    return profileFns.peekProfileDetails(descriptor, ipfs, orbitdb);
 };
 
-export const peekIdentitySchema = async (did, orbitdb) => {
-    assertIdentityDid(did);
-
+export const createIdentity = async ({ did, currentDevice, backupData, profileDetails }, storage, didm, ipfs) => {
     const id = await sha256(did);
-    const descriptor = { addedAt: Date.now(), did, id };
+    const descriptor = {
+        id,
+        did,
+        addedAt: Date.now(),
+        revoked: false,
+    };
 
-    return peekSchema(descriptor, orbitdb);
-};
-
-export const createIdentity = async ({ did, currentDevice, backupData, schema }, storage, didm, orbitdb) => {
-    assertIdentityDid(did);
-
-    const id = await sha256(did);
-    const key = getDescriptorKey(id);
-    const descriptor = { addedAt: Date.now(), did, id };
+    const orbitdb = await getOrbitDb(id, ipfs);
 
     try {
-        const devices = await createDevices(currentDevice, descriptor, didm, storage, orbitdb);
-        const backup = await createBackup(backupData, descriptor, storage);
-        const profile = await createProfile(schema, descriptor, orbitdb);
+        await storage.set(getDescriptorKey(id), descriptor, { encrypt: true });
 
-        await storage.set(key, descriptor, { encrypt: true });
+        const backup = await backupFns.createBackup(backupData, descriptor, storage);
+        const profile = await profileFns.createProfile(profileDetails, descriptor, ipfs, orbitdb);
+        const devices = await devicesFns.createDevices(currentDevice, descriptor, didm, storage, orbitdb);
 
-        return new Identity(descriptor, devices, backup, profile);
+        return new Identity(descriptor, storage, orbitdb, devices, backup, profile);
     } catch (err) {
         await removeIdentity(id, storage, didm, orbitdb);
 
@@ -68,22 +117,28 @@ export const createIdentity = async ({ did, currentDevice, backupData, schema },
     }
 };
 
-export const removeIdentity = async (id, storage, didm, orbitdb) => {
-    const key = getDescriptorKey(id);
-    const descriptor = await storage.get(key);
+export const removeIdentity = async (id, storage, didm, ipfs) => {
+    const descriptorKey = getDescriptorKey(id);
+    const descriptor = await storage.get(descriptorKey);
 
     if (!descriptor) {
         return;
     }
 
-    await removeDevices(descriptor, didm, storage, orbitdb);
-    await removeBackup(descriptor, storage);
-    await removeProfile(descriptor, orbitdb);
+    await storage.remove(descriptorKey);
 
-    await storage.remove(key);
+    const orbitdb = await getOrbitDb(descriptor.id, ipfs, {
+        replicate: false,
+    });
+
+    await devicesFns.removeDevices(descriptor, didm, storage, orbitdb);
+    await profileFns.removeProfile(descriptor, ipfs, orbitdb);
+    await backupFns.removeBackup(descriptor, storage);
+
+    await dropOrbitDb(orbitdb);
 };
 
-export const loadIdentities = async (storage, didm, orbitdb) => {
+export const loadIdentities = async (storage, didm, ipfs) => {
     const identitiesKeys = await storage.list({
         gte: DESCRIPTOR_KEY_PREFIX,
         lte: `${DESCRIPTOR_KEY_PREFIX}\xFF`,
@@ -93,14 +148,19 @@ export const loadIdentities = async (storage, didm, orbitdb) => {
     return pReduce(identitiesKeys, async (acc, key) => {
         const descriptor = await storage.get(key);
 
-        const devices = await restoreDevices(descriptor, didm, storage, orbitdb);
-        const backup = await restoreBackup(descriptor, storage);
-        const profile = await restoreProfile(descriptor, orbitdb);
+        const orbitdb = await getOrbitDb(descriptor.id, ipfs, {
+            replicate: !descriptor.revoked,
+        });
 
-        const identity = new Identity(descriptor, devices, backup, profile);
+        const backup = await backupFns.restoreBackup(descriptor, storage);
+        const profile = await profileFns.restoreProfile(descriptor, ipfs, orbitdb);
+        const devices = await devicesFns.restoreDevices(descriptor, didm, storage, orbitdb);
+
+        const identity = new Identity(descriptor, storage, orbitdb, devices, backup, profile);
 
         return Object.assign(acc, { [descriptor.id]: identity });
     }, {});
 };
 
-export { assertSchema, assertBackupData, assertCurrentDevice, DEVICE_ID_PREFIX };
+export { assertDeviceInfo, generateCurrentDevice } from './devices';
+export { assertProfileDetails } from './profile';

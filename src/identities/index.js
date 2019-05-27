@@ -1,36 +1,56 @@
 import signal from 'pico-signals';
-import { pick } from 'lodash';
-import { generateKeyPair } from 'human-crypto-keys';
 import { parseDid } from '../utils/did';
 import {
-    UnsupportedDidMethodPurposeError, IdentitiesNotLoadedError, UnknownIdentityError, IdentityAlreadyExistsError,
+    UnsupportedDidMethodPurposeError,
+    IdentitiesNotLoadedError,
+    UnknownIdentityError,
+    IdentityAlreadyExistsError,
 } from '../utils/errors';
-import {
-    createIdentity, removeIdentity, loadIdentities, peekIdentitySchema,
-    assertCurrentDevice, assertBackupData, assertSchema,
-    DEVICE_ID_PREFIX,
-} from './identity';
-
-const MASTER_KEY_ID = 'idm-master';
+import * as identityFns from './identity';
 
 class Identities {
     #storage;
     #didm;
-    #orbitdb;
+    #ipfs;
 
-    #identities;
+    #identitiesList;
     #identitiesMap;
     #identitiesLoad;
     #onChange = signal();
 
-    constructor(storage, didm, orbitdb) {
+    constructor(storage, didm, ipfs) {
         this.#storage = storage;
         this.#didm = didm;
-        this.#orbitdb = orbitdb;
+        this.#ipfs = ipfs;
+    }
+
+    isLoaded() {
+        return !!this.#identitiesMap;
+    }
+
+    async load() {
+        if (!this.#identitiesLoad) {
+            this.#identitiesLoad = identityFns.loadIdentities(this.#storage, this.#didm, this.#ipfs);
+        }
+
+        try {
+            this.#identitiesMap = await this.#identitiesLoad;
+        } catch (err) {
+            this.#identitiesLoad = undefined;
+            throw err;
+        }
+
+        this.#buildIdentitiesList();
+
+        return this.#identitiesList;
     }
 
     get(id) {
-        if (!this.#identitiesMap || !this.#identitiesMap[id]) {
+        if (!this.#identitiesMap) {
+            throw new IdentitiesNotLoadedError();
+        }
+
+        if (!this.#identitiesMap[id]) {
             throw new UnknownIdentityError(id);
         }
 
@@ -38,153 +58,107 @@ class Identities {
     }
 
     list() {
-        if (!this.#identities) {
+        if (!this.#identitiesMap) {
             throw new IdentitiesNotLoadedError();
         }
 
-        return this.#identities;
+        return this.#identitiesList;
     }
 
-    async load() {
-        if (this.#identitiesMap) {
-            return;
-        }
-
-        if (!this.#identitiesLoad) {
-            this.#identitiesLoad = this.#assureIdentities().catch((error) => {
-                this.#identities = undefined;
-                this.#identitiesMap = undefined;
-                this.#identitiesLoad = undefined;
-
-                throw error;
-            });
-        }
-
-        return this.#identitiesLoad;
-    }
-
-    async peek(didMethod, parameters) {
-        this.#assertSupport(didMethod, 'getDid', 'resolve');
+    async peek(didMethod, params) {
+        this.#assertDidmSupport(didMethod, 'getDid', 'resolve');
 
         await this.load();
 
-        const did = await this.#didm.getDid(didMethod, parameters);
+        const did = await this.#didm.getDid(didMethod, params);
         const didDocument = await this.#didm.resolve(did);
         const identity = this.#getIdentityByDid(did);
-        const schema = identity ? identity.profile.toSchema() : await peekIdentitySchema(did, this.#orbitdb);
+
+        const profileDetails = identity ? identity.profile.getDetails() : await identityFns.peekProfileDetails(did, this.#ipfs);
 
         return {
             did,
             didDocument,
-            schema,
+            profileDetails,
         };
     }
 
-    async create(didMethod, parameters) {
-        const { schema, deviceInfo } = parameters;
+    async create(didMethod, params) {
+        const { profileDetails, deviceInfo } = params;
 
-        this.#assertSupport(didMethod, 'create');
-        assertSchema(schema);
+        this.#assertDidmSupport(didMethod, 'create');
+        identityFns.assertProfileDetails(profileDetails);
+        identityFns.assertDeviceInfo(deviceInfo);
 
         await this.load();
 
-        const masterKeyPair = await generateKeyPair('rsa');
-        const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
+        const { currentDevice, didPublicKey } = await identityFns.generateCurrentDevice(deviceInfo);
 
-        const currentDevice = { id: 'idm-device-genesis', ...deviceInfo, ...deviceKeyPair };
-        const backupData = masterKeyPair;
-
-        assertCurrentDevice(currentDevice);
-        assertBackupData(backupData);
-
-        const didDocument = await this.#didm.create(didMethod, { privateKey: masterKeyPair.privateKey }, (document) => {
-            document.addPublicKey({
-                id: MASTER_KEY_ID,
-                type: 'RsaVerificationKey2018',
-                publicKeyPem: masterKeyPair.publicKey,
-            });
-
-            const documentDeviceKey = document.addPublicKey({
-                type: 'RsaVerificationKey2018',
-                publicKeyPem: deviceKeyPair.publicKey,
-            }, { idPrefix: DEVICE_ID_PREFIX });
-
-            currentDevice.id = parseDid(documentDeviceKey.id).fragment;
+        const { did, backupData } = await this.#didm.create(didMethod, params, (document) => {
+            document.addPublicKey(didPublicKey);
         });
 
-        const identity = await createIdentity({
-            did: didDocument.id,
+        const identity = await identityFns.createIdentity({
+            did,
             currentDevice,
             backupData,
-            schema,
-        }, this.#storage, this.#didm, this.#orbitdb);
+            profileDetails,
+        }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.getId()] = identity;
-        this.#sortIdentities();
-
-        this.#onChange.dispatch(this.#identities);
+        this.#updateIdentitiesList();
 
         return identity;
     }
 
-    async import(didMethod, parameters) {
-        const { deviceInfo } = parameters;
+    async import(didMethod, params) {
+        const { deviceInfo } = params;
 
-        this.#assertSupport(didMethod, 'getDid', 'update');
+        this.#assertDidmSupport(didMethod, 'getDid', 'update');
+        identityFns.assertDeviceInfo(deviceInfo);
 
         await this.load();
 
-        const did = await this.#didm.getDid(didMethod, parameters);
+        const did = await this.#didm.getDid(didMethod, params);
 
         if (this.#getIdentityByDid(did)) {
             throw new IdentityAlreadyExistsError(did);
         }
 
-        const deviceKeyPair = pick(await generateKeyPair('rsa'), 'publicKey', 'privateKey');
+        const { currentDevice, didPublicKey } = await identityFns.generateCurrentDevice(deviceInfo);
 
-        const currentDevice = { id: 'idm-device-genesis', ...deviceInfo, ...deviceKeyPair };
-
-        assertCurrentDevice(currentDevice);
-
-        const didDocument = await this.#didm.update(did, parameters, (document) => {
-            const documentDeviceKey = document.addPublicKey({
-                type: 'RsaVerificationKey2018',
-                publicKeyPem: deviceKeyPair.publicKey,
-            }, { idPrefix: DEVICE_ID_PREFIX });
-
-            currentDevice.id = parseDid(documentDeviceKey.id).fragment;
+        await this.#didm.update(did, params, (document) => {
+            document.addPublicKey(didPublicKey);
         });
 
-        const identity = await createIdentity({
-            did: didDocument.id,
+        const identity = await identityFns.createIdentity({
+            did,
             currentDevice,
-        }, this.#storage, this.#didm, this.#orbitdb);
+        }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.id] = identity;
-        this.#sortIdentities();
-
-        this.#onChange.dispatch(this.#identities);
+        this.#updateIdentitiesList();
 
         return identity;
     }
 
-    async remove(id, parameters) {
+    async remove(id, params) {
         await this.load();
 
         const identity = this.get(id);
-        const identityDid = identity.getDid();
-        const identityDidMethod = parseDid(identityDid).method;
+        const did = identity.getDid();
+        const didMethod = parseDid(did).method;
 
-        this.#assertSupport(identityDidMethod, 'update');
+        this.#assertDidmSupport(didMethod, 'update');
 
-        await this.#didm.update(identityDid, parameters, (document) => {
+        await this.#didm.update(did, params, (document) => {
             document.revokePublicKey(identity.devices.getCurrent().id);
         });
 
-        await removeIdentity(id, this.#storage, this.#didm, this.#orbitdb);
+        await identityFns.removeIdentity(id, this.#storage, this.#didm, this.#ipfs);
 
         delete this.#identitiesMap[id];
-        this.#sortIdentities();
+        this.#updateIdentitiesList();
     }
 
     onChange(fn) {
@@ -192,30 +166,27 @@ class Identities {
     }
 
     #getIdentityByDid = (did) =>
-        this.#identities.find((identity) => identity.getDid() === did);
+        this.#identitiesList.find((identity) => identity.getDid() === did);
 
-    #assureIdentities = async () => {
-        this.#identitiesMap = await loadIdentities(this.#storage, this.#didm, this.#orbitdb);
-
-        this.#sortIdentities();
-    }
-
-    #sortIdentities = () => {
-        const identities = Object.values(this.#identitiesMap);
-
-        // Sort identities from older to new
-        this.#identities = identities.sort((identity1, identity2) => identity1.getAddedAt() - identity2.getAddedAt());
-    }
-
-    #assertSupport = (didMethod, ...purposes) => {
+    #assertDidmSupport = (didMethod, ...purposes) => {
         purposes.forEach((purpose) => {
             if (!this.#didm.isSupported(didMethod, purpose)) {
                 throw new UnsupportedDidMethodPurposeError(didMethod, purpose);
             }
         });
     }
+
+    #buildIdentitiesList = () => {
+        this.#identitiesList = Object.values(this.#identitiesMap);
+        this.#identitiesList.sort((identity1, identity2) => identity1.getAddedAt() - identity2.getAddedAt());
+    }
+
+    #updateIdentitiesList = () => {
+        this.#buildIdentitiesList();
+        this.#onChange.dispatch(this.#identitiesList);
+    }
 }
 
-const createIdentities = (storage, didm, orbitdb) => new Identities(storage, didm, orbitdb);
+const createIdentities = (storage, didm, ipfs) => new Identities(storage, didm, ipfs);
 
 export default createIdentities;

@@ -1,5 +1,6 @@
 import createDidIpid, { getDid } from 'did-ipid';
-import { getKeyPairFromMnemonic, getKeyPairFromSeed } from 'human-crypto-keys';
+import { generateKeyPair, getKeyPairFromMnemonic, getKeyPairFromSeed } from 'human-crypto-keys';
+import { MissingDidParameters } from '../../utils/errors';
 
 class Ipid {
     static info = {
@@ -23,23 +24,44 @@ class Ipid {
     }
 
     async resolve(did) {
-        const didIpid = await this.#getDidIpid();
+        await this.#assureDidIpid();
 
-        return didIpid.resolve(did);
+        return this.#didIpid.resolve(did);
     }
 
     async create(params, operations) {
-        const masterPrivateKey = await this.#getMasterPrivateKey(params);
-        const didIpid = await this.#getDidIpid();
+        const masterKeyPair = await generateKeyPair('rsa');
 
-        return didIpid.create(masterPrivateKey, operations);
+        await this.#assureDidIpid();
+
+        const didDocument = await this.#didIpid.create(masterKeyPair.privateKey, (document) => {
+            document.addPublicKey({
+                id: 'idm-master',
+                type: 'RsaVerificationKey2018',
+                publicKeyPem: masterKeyPair.publicKey,
+            });
+
+            operations(document);
+        });
+
+        return {
+            did: didDocument.id,
+            didDocument,
+            backupData: masterKeyPair,
+        };
     }
 
     async update(did, params, operations) {
         const masterPrivateKey = await this.#getMasterPrivateKey(params);
-        const didIpid = await this.#getDidIpid();
 
-        return didIpid.update(masterPrivateKey, operations);
+        await this.#assureDidIpid();
+
+        const didDocument = await this.#didIpid.update(masterPrivateKey, operations);
+
+        return {
+            did,
+            didDocument,
+        };
     }
 
     async isPublicKeyValid(did, publicKeyId) {
@@ -48,34 +70,32 @@ class Ipid {
         return publicKey.some((key) => key.id === publicKeyId);
     }
 
-    #getDidIpid = async () => {
-        if (this.#didIpid) {
-            return this.#didIpid;
+    #assureDidIpid = async () => {
+        if (!this.#didIpid) {
+            this.#didIpid = await createDidIpid(this.#ipfs);
         }
-
-        this.#didIpid = await createDidIpid(this.#ipfs);
-
-        return this.#didIpid;
     };
 
     #getMasterPrivateKey = async (params) => {
-        const { privateKey, mnemonic, seed } = params;
+        const { privateKey, mnemonic, seed, algorithm } = params;
 
         if (privateKey) {
             return privateKey;
         }
 
         if (seed) {
-            const { privateKey } = await getKeyPairFromSeed(seed, 'rsa');
+            const { privateKey } = await getKeyPairFromSeed(seed, algorithm || 'rsa');
 
             return privateKey;
         }
 
         if (mnemonic) {
-            const { privateKey } = await getKeyPairFromMnemonic(mnemonic, 'rsa');
+            const { privateKey } = await getKeyPairFromMnemonic(mnemonic, algorithm || 'rsa');
 
             return privateKey;
         }
+
+        throw new MissingDidParameters('Please specify the privateKey, seed or mnemonic');
     }
 }
 

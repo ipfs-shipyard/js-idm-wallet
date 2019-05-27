@@ -1,5 +1,4 @@
 import Ipfs from 'ipfs';
-import OrbitDb from 'orbit-db';
 import createSecret from './secret';
 import createStorage from './storage';
 import createLocker from './locker';
@@ -25,6 +24,10 @@ const createIpfs = (ipfs) => {
             },
             config: {
                 Addresses: {
+                    // WebSocket star possible servers:
+                    // ws-star0.ams = "ws-star0.ams.dwebops.pub ws-star.discovery.libp2p.io"
+                    // ws-star1.par = "ws-star1.par.dwebops.pub"
+                    // ws-star2.sjc = "ws-star2.sjc.dwebops.pub"
                     Swarm: ['/dns4/ws-star1.par.dwebops.pub/tcp/443/wss/p2p-websocket-star'],
                 },
             },
@@ -35,20 +38,17 @@ const createIpfs = (ipfs) => {
     });
 };
 
-const createOrbitDb = (ipfs, options) => OrbitDb.createInstance(ipfs, { ...options });
-
 const createWallet = async (options) => {
-    const { ipfs } = { ...options };
+    options = { ...options };
 
-    const ipfsNode = await createIpfs(ipfs);
-    const orbitdb = await createOrbitDb(ipfsNode);
+    const ipfsNode = await createIpfs(options.ipfs);
 
     const secret = createSecret();
 
     const didm = createDidm(ipfsNode);
     const storage = await createStorage(secret);
     const locker = await createLocker(storage, secret);
-    const identities = createIdentities(storage, didm, orbitdb);
+    const identities = createIdentities(storage, didm, ipfsNode);
 
     return {
         didm,
