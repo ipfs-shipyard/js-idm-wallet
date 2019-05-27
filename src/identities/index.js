@@ -17,6 +17,7 @@ class Identities {
     #identitiesMap;
     #identitiesLoad;
     #onChange = signal();
+    #onLoad = signal();
 
     constructor(storage, didm, ipfs) {
         this.#storage = storage;
@@ -41,6 +42,7 @@ class Identities {
         }
 
         this.#buildIdentitiesList();
+        this.#onLoad.dispatch(this.#identitiesList);
 
         return this.#identitiesList;
     }
@@ -163,6 +165,10 @@ class Identities {
 
     onChange(fn) {
         return this.#onChange.add(fn);
+    }
+
+    onLoad(fn) {
+        return this.#onLoad.add(fn);
     }
 
     #getIdentityByDid = (did) =>

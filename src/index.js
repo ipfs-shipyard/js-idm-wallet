@@ -1,9 +1,10 @@
 import Ipfs from 'ipfs';
 import createSecret from './secret';
+import createDidm from './didm';
 import createStorage from './storage';
 import createLocker from './locker';
 import createIdentities from './identities';
-import createDidm from './didm';
+import createSessions from './sessions';
 import { keychainPass } from './utils/constants';
 import { UnavailableIpfsError } from './utils/errors';
 
@@ -49,12 +50,14 @@ const createWallet = async (options) => {
     const storage = await createStorage(secret);
     const locker = await createLocker(storage, secret);
     const identities = createIdentities(storage, didm, ipfsNode);
+    const sessions = await createSessions(storage, identities);
 
     return {
         didm,
         storage,
         locker,
         identities,
+        sessions,
     };
 };
 
