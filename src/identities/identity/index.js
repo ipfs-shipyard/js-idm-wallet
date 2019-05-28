@@ -35,16 +35,16 @@ class Identity {
         }
     }
 
-    getAddedAt() {
-        return this.#descriptor.addedAt;
-    }
-
     getId() {
         return this.#descriptor.id;
     }
 
     getDid() {
         return this.#descriptor.did;
+    }
+
+    getAddedAt() {
+        return this.#descriptor.addedAt;
     }
 
     isRevoked() {

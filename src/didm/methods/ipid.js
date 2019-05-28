@@ -58,10 +58,7 @@ class Ipid {
 
         const didDocument = await this.#didIpid.update(masterPrivateKey, operations);
 
-        return {
-            did,
-            didDocument,
-        };
+        return didDocument;
     }
 
     async isPublicKeyValid(did, publicKeyId) {

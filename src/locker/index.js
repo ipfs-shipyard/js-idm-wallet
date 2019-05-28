@@ -10,7 +10,7 @@ class Locker {
     #pristine;
     #masterLockType;
 
-    #onLocked = signal();
+    #onLockedChange = signal();
 
     idleTimer;
     masterLock;
@@ -66,7 +66,7 @@ class Locker {
     }
 
     onLockedChange(fn) {
-        return this.#onLocked.add(fn);
+        return this.#onLockedChange.add(fn);
     }
 
     #handleIdleTimerTimeout = () => {
@@ -82,7 +82,7 @@ class Locker {
             this.idleTimer.restart();
         }
 
-        this.#onLocked.dispatch(locked);
+        this.#onLockedChange.dispatch(locked);
     }
 
     #handleMasterLockEnabledChange = (enabled) => {

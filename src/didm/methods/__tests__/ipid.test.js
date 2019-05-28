@@ -141,11 +141,10 @@ describe('update', () => {
         const mockParams = { privateKey: mockKeyPair.privateKey };
 
         const ipid = createIpid();
-        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
+        const didDocument = await ipid.update(mockDid, mockParams, mockOperations);
 
         expect(mockDidIpid.update).toHaveBeenCalledWith(mockParams.privateKey, mockOperations);
         expect(mockOperations).toHaveBeenCalledTimes(1);
-        expect(did).toBe(mockDid);
         expect(didDocument).toEqual(mockDocument);
     });
 
@@ -154,10 +153,9 @@ describe('update', () => {
         const mockParams = { mnemonic: mockBackupData.mnemonic };
 
         const ipid = createIpid();
-        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
+        const didDocument = await ipid.update(mockDid, mockParams, mockOperations);
 
-        expect(did).toBe(mockDid);
-        expect(didDocument).toEqual(mockDocument);
+        expect(didDocument).toBe(mockDocument);
     });
 
     it('should support seeds', async () => {
@@ -165,9 +163,8 @@ describe('update', () => {
         const mockParams = { seed: mockBackupData.seed };
 
         const ipid = createIpid();
-        const { did, didDocument } = await ipid.update(mockDid, mockParams, mockOperations);
+        const didDocument = await ipid.update(mockDid, mockParams, mockOperations);
 
-        expect(did).toBe(mockDid);
         expect(didDocument).toEqual(mockDocument);
     });
 
