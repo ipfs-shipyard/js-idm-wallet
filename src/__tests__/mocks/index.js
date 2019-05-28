@@ -11,3 +11,7 @@ export class mockIpfs {
         }
     }
 }
+
+export const mockStorage = {
+    list: jest.fn(() => []),
+};

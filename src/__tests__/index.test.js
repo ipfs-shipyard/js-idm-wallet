@@ -3,10 +3,10 @@ import createWallet from '../index';
 import createStorage from '../storage';
 import createLocker from '../locker';
 import createDidm from '../didm';
-import { mockIpfs } from './mocks';
+import { mockIpfs, mockStorage } from './mocks';
 
 jest.mock('ipfs', () => jest.fn((...args) => new mockIpfs(...args))); // eslint-disable-line babel/new-cap
-jest.mock('../storage');
+jest.mock('../storage', () => jest.fn(() => mockStorage));
 jest.mock('../locker');
 jest.mock('../didm');
 
@@ -17,7 +17,7 @@ beforeEach(() => {
 it('should create wallet successfully', async () => {
     const wallet = await createWallet();
 
-    expect(Object.keys(wallet)).toEqual(['didm', 'storage', 'locker', 'identities']);
+    expect(Object.keys(wallet)).toEqual(['didm', 'storage', 'locker', 'identities', 'sessions']);
     expect(Ipfs).toHaveBeenCalledTimes(1);
 });
 
