@@ -1,5 +1,5 @@
 import signal from 'pico-signals';
-import { pick, get, isPlainObject } from 'lodash';
+import { pick, get, has, isPlainObject, isEqual } from 'lodash';
 import {
     InvalidProfilePropertyError,
     InvalidProfileUnsetPropertyError,
@@ -38,7 +38,7 @@ class Profile {
         this.#blobStore.onChange(this.#handleBlobStoreChange);
 
         this.#syncBlobStore();
-        this.#updateDetails();
+        this.#maybeUpdateDetails();
     }
 
     getProperty(key) {
@@ -54,7 +54,9 @@ class Profile {
             value = pick(blobRef, 'type', 'hash');
         }
 
-        await this.#orbitdbStore.put(key, value);
+        if (!isEqual(this.#orbitdbStore.get(key), value)) {
+            await this.#orbitdbStore.put(key, value);
+        }
     }
 
     async unsetProperty(key) {
@@ -62,7 +64,9 @@ class Profile {
             throw new InvalidProfileUnsetPropertyError(key);
         }
 
-        await this.#orbitdbStore.del(key);
+        if (has(this.#orbitdbStore.all, key)) {
+            await this.#orbitdbStore.del(key);
+        }
     }
 
     getDetails() {
@@ -79,28 +83,32 @@ class Profile {
         this.#blobStore.sync(blobRefs);
     }
 
-    #updateDetails = () => {
-        this.#details = { ...this.#orbitdbStore.all };
+    #maybeUpdateDetails = () => {
+        const details = { ...this.#orbitdbStore.all };
 
         PROFILE_BLOB_PROPERTIES.forEach((key) => {
-            if (this.#details[key]) {
-                const blob = this.#blobStore.get(key);
+            if (details[key]) {
+                const blobRef = this.#blobStore.get(key);
 
-                this.#details[key] = get(blob, 'content.dataUri', null);
+                details[key] = get(blobRef, 'content.dataUri', null);
             }
         });
 
-        this.#onChange.dispatch(this.#details);
+        if (!isEqual(this.#details, details)) {
+            this.#details = details;
+        }
     }
 
     #handleOrbitdbStoreChange = () => {
         this.#syncBlobStore();
-        this.#updateDetails();
+        this.#maybeUpdateDetails();
+        this.#onChange.dispatch();
     }
 
-    #handleBlobStoreChange = (key, blobRef) => {
-        if (blobRef.content.status === 'fulfilled') {
-            this.#updateDetails();
+    #handleBlobStoreChange = (key, ref, async) => {
+        if (async) {
+            this.#maybeUpdateDetails();
+            this.#onChange.dispatch();
         }
     }
 }
@@ -186,8 +194,10 @@ const assertProfileProperty = (key, value) => {
 
 export const assertProfileDetails = (details) => {
     PROFILE_MANDATORY_PROPERTIES.forEach((property) => {
-        if (details[property] == null) {
-            throw new InvalidProfilePropertyError(property, details[property]);
+        const value = details && details[property];
+
+        if (value == null) {
+            throw new InvalidProfilePropertyError(property, value);
         }
     });
 

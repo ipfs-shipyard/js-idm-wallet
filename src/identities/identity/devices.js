@@ -1,7 +1,12 @@
 import signal from 'pico-signals';
-import { omit, pick } from 'lodash';
+import { omit, pick, isEqual } from 'lodash';
 import { composePrivateKey, composePublicKey, decomposePrivateKey, decomposePublicKey } from 'crypto-key-composer';
-import { InvalidDevicePropertyError, UnknownDeviceError, InvalidDeviceOperationError } from '../../utils/errors';
+import {
+    InvalidDevicePropertyError,
+    UnsupportedDeviceInfoPropertyError,
+    UnknownDeviceError,
+    InvalidDeviceOperationError,
+} from '../../utils/errors';
 import { sha256 } from '../../utils/sha';
 import { getCurrentDeviceKey } from './utils/storage-keys';
 import { loadStore, dropStore } from './utils/orbitdb';
@@ -85,11 +90,15 @@ class Devices {
             throw new UnknownDeviceError(id);
         }
 
-        await this.#orbitdbStore.put(id, {
-            ...device,
-            ...pick(deviceInfo, 'type', 'name'),
-            updatedAt: Date.now(),
-        });
+        const storedDeviceInfo = pick(device, Object.keys(deviceInfo));
+
+        if (!isEqual(deviceInfo, storedDeviceInfo)) {
+            await this.#orbitdbStore.put(id, {
+                ...device,
+                updatedAt: Date.now(),
+                ...deviceInfo,
+            });
+        }
     }
 
     onChange(fn) {
@@ -135,8 +144,8 @@ class Devices {
     }
 }
 
-export const assertDeviceInfo = (device) => {
-    const { type, name } = device;
+export const assertDeviceInfo = (deviceInfo) => {
+    const { type, name, ...rest } = deviceInfo || {};
 
     if (!DEVICE_TYPES.includes(type)) {
         throw new InvalidDevicePropertyError('type', type);
@@ -144,6 +153,12 @@ export const assertDeviceInfo = (device) => {
 
     if (!name || typeof name !== 'string') {
         throw new InvalidDevicePropertyError('name', name);
+    }
+
+    const otherProps = Object.keys(rest);
+
+    if (otherProps.length) {
+        throw new UnsupportedDeviceInfoPropertyError(otherProps[0]);
     }
 };
 
@@ -173,10 +188,10 @@ export const generateCurrentDevice = async (deviceInfo) => {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         revokedAt: null,
-        ...pick(deviceInfo, 'type', 'name'),
         keyType: 'RsaVerificationKey2018',
         privateKey,
         publicKey,
+        ...deviceInfo,
     };
 
     const didPublicKey = {

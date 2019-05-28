@@ -77,7 +77,7 @@ class Ipid {
     };
 
     #getMasterPrivateKey = async (params) => {
-        const { privateKey, mnemonic, seed, algorithm } = params;
+        const { privateKey, mnemonic, seed, algorithm } = params || {};
 
         if (privateKey) {
             return privateKey;

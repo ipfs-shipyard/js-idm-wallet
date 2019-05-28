@@ -21,7 +21,14 @@ class BlobStore {
 
         const [{ hash }] = await this.#ipfs.add(buffer, { pin: true });
 
-        const ref = {
+        let ref = this.#refs.get(key);
+
+        // Skip if hash & type are the same and it's already loaded to avoid triggering change
+        if (ref && ref.type === type && ref.hash === hash && ref.content.status === 'fulfilled') {
+            return ref;
+        }
+
+        ref = {
             type,
             hash,
             content: {
@@ -40,6 +47,7 @@ class BlobStore {
     async del(key) {
         const ref = this.#refs.get(key);
 
+        // Skip if already removed to avoid triggering change
         if (ref) {
             await this.#ipfs.pin.rm(ref.hash);
 
@@ -50,14 +58,21 @@ class BlobStore {
 
     async sync(refs) {
         const refsKeys = Object.keys(refs);
-        const storeKeys = Array.from(this.#refs.keys());
+        const currentKeys = Array.from(this.#refs.keys());
 
-        const removedKeys = difference(storeKeys, refsKeys);
-        const addedKeys = difference(refsKeys, storeKeys);
+        const removedKeys = difference(currentKeys, refsKeys);
+        const addedKeys = difference(refsKeys, currentKeys);
+        const updatedKeys = refsKeys.filter((key) => {
+            const ref = refs[key];
+            const currentRef = this.#refs.get(key);
+
+            return currentRef && (ref.type !== currentRef.type || ref.hash !== currentRef.hash);
+        });
 
         return Promise.all([
             ...removedKeys.map((key) => this.#syncRemoved(key)),
-            ...addedKeys.map((key) => this.#syncAdded(key, refs[key])),
+            ...addedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),
+            ...updatedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),
         ]);
     }
 
@@ -66,41 +81,41 @@ class BlobStore {
     }
 
     #syncRemoved = async (key) => {
+        const ref = this.#refs.get(key);
+
+        this.#refs.delete(key);
+        this.#notifyChange(key);
+
         try {
-            await this.del(key);
+            await this.#ipfs.pin.rm(ref.hash);
         } catch (err) {
             console.warn(`Unable to remove "${key}" from blob store`, err);
         }
     }
 
-    #syncAdded = async (key, ref) => {
-        if (ref.content) {
-            return;
-        }
-
-        const { type, hash } = ref;
-
-        // Mark the blob as pending
-        this.#refs.set(key, {
-            type,
-            hash,
+    #syncAddedOrUpdated = async (key, ref) => {
+        ref = {
+            ...ref,
             content: {
                 status: 'pending',
                 error: undefined,
                 data: undefined,
                 dataUri: undefined,
             },
-        });
+        };
+
+        // Mark the blob as pending
+        this.#refs.set(key, ref);
         this.#notifyChange(key);
 
         // Attempt to load the blob
         let content;
 
         try {
-            const [{ content: buffer }] = await this.#ipfs.get(hash);
+            const [{ content: buffer }] = await this.#ipfs.get(ref.hash);
 
             // Pin the hash so that we can serve it to others
-            await this.#ipfs.pin.add(hash);
+            await this.#ipfs.pin.add(ref.hash);
 
             const data = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
 
@@ -108,7 +123,7 @@ class BlobStore {
                 status: 'fulfilled',
                 error: undefined,
                 data,
-                dataUri: this.#getDataUri(type, buffer),
+                dataUri: this.#getDataUri(ref.type, buffer),
             };
         } catch (error) {
             content = {
@@ -119,19 +134,20 @@ class BlobStore {
             };
         }
 
-        // Update the blob if it's still the same (it might have changed meanwhile)
-        const stillSameHash = this.#refs.has(key) && this.#refs.get(key).hash === hash;
+        const stillExactSame = this.#refs.get(key) === ref;
 
-        if (stillSameHash) {
-            this.#refs.set(key, { type, hash, content });
-            this.#notifyChange(key);
+        if (stillExactSame) {
+            this.#refs.set(key, { ...ref, content });
+            this.#notifyChange(key, true);
         }
     }
 
+    #isSame = (ref1, ref2) => ref1.type === ref2.type && ref1.hash === ref2.hash;
+
     #getDataUri = (type, buffer) => `data:${type};base64,${buffer.toString('base64')}`;
 
-    #notifyChange = (key) => {
-        this.#onChange.dispatch(key, this.#refs.get(key));
+    #notifyChange = (key, async = false) => {
+        this.#onChange.dispatch(key, this.#refs.get(key), async);
     }
 }
 

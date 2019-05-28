@@ -138,6 +138,12 @@ export class InvalidDevicePropertyError extends BaseError {
     }
 }
 
+export class UnsupportedDeviceInfoPropertyError extends BaseError {
+    constructor(property) {
+        super(`Property ${property} is not supported`, 'UNSUPPORTED_DEVICE_INFO_PROPERTY');
+    }
+}
+
 export class UnknownDeviceError extends BaseError {
     constructor(id) {
         super(`Unknown device with id: ${id}`, 'UNKNOWN_DEVICE');
@@ -158,7 +164,7 @@ export class InvalidProfilePropertyError extends BaseError {
 
 export class UnsupportedProfilePropertyError extends BaseError {
     constructor(property) {
-        super(`Property ${property} is not yet supported`, 'UNSUPPORTED_PROFILE_PROPERTY');
+        super(`Property ${property} is not supported`, 'UNSUPPORTED_PROFILE_PROPERTY');
     }
 }
 

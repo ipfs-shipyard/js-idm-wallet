@@ -84,7 +84,7 @@ class Identities {
     }
 
     async create(didMethod, params) {
-        const { profileDetails, deviceInfo } = params;
+        const { profileDetails, deviceInfo } = params || {};
 
         this.#assertDidmSupport(didMethod, 'create');
         identityFns.assertProfileDetails(profileDetails);
@@ -112,7 +112,7 @@ class Identities {
     }
 
     async import(didMethod, params) {
-        const { deviceInfo } = params;
+        const { deviceInfo } = params || {};
 
         this.#assertDidmSupport(didMethod, 'getDid', 'update');
         identityFns.assertDeviceInfo(deviceInfo);
