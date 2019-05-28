@@ -1,23 +1,19 @@
 import signal from 'pico-signals';
 import pDelay from 'delay';
 import pSeries from 'p-series';
-import { pick, get, has, isPlainObject, isEqual } from 'lodash';
-import {
-    InvalidProfilePropertyError,
-    InvalidProfileUnsetPropertyError,
-    ProfileReplicationTimeoutError,
-    UnsupportedProfilePropertyError,
-} from '../../utils/errors';
-import createBlobStore from './utils/blob-store';
+import { pick, get, has, isEqual } from 'lodash';
 import { loadStore, dropStore, dropOrbitDbIfEmpty, waitStoreReplication } from './utils/orbitdb';
-
-const PROFILE_TYPES = ['Person', 'Organization', 'Thing'];
-const PROFILE_MANDATORY_PROPERTIES = ['@context', '@type', 'name'];
-const PROFILE_BLOB_PROPERTIES = ['image'];
-const PEEK_REPLICATION_WAIT_TIME = 60000;
-const PEEK_DROP_DELAY = 60000 * 3;
-const ORBITDB_STORE_NAME = 'profile';
-const ORBITDB_STORE_TYPE = 'keyvalue';
+import createBlobStore from './utils/blob-store';
+import { assertProfileProperty, assertNonMandatoryProfileProperty } from './utils/asserts';
+import { ProfileReplicationTimeoutError } from '../../utils/errors';
+import {
+    ORBITDB_STORE_NAME,
+    ORBITDB_STORE_TYPE,
+    PEEK_REPLICATION_WAIT_TIME,
+    PEEK_DROP_DELAY,
+    PROFILE_BLOB_PROPERTIES,
+    PROFILE_MANDATORY_PROPERTIES,
+} from './utils/constants/profile';
 
 const peekDropStoreTimers = new Map();
 
@@ -51,7 +47,7 @@ class Profile {
     }
 
     async unsetProperty(key) {
-        assertProfilePropertyRemoval(key);
+        assertNonMandatoryProfileProperty(key);
 
         await this.#removeProperty(key);
     }
@@ -60,7 +56,7 @@ class Profile {
         const tasks = Object.entries(properties)
         .map(([key, value]) => {
             if (value === undefined) {
-                assertProfilePropertyRemoval(key);
+                assertNonMandatoryProfileProperty(key);
 
                 return () => this.#removeProperty(key);
             }
@@ -175,87 +171,6 @@ const cancelPeekDropStore = (orbitdbStore) => {
 
     clearTimeout(timeoutId);
     peekDropStoreTimers.delete(orbitdbStore);
-};
-
-const assertProfileProperty = (key, value) => {
-    switch (key) {
-    case '@context':
-        if (value !== 'https://schema.org') {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-        break;
-    case '@type':
-        if (!PROFILE_TYPES.includes(value)) {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-        break;
-    case 'name':
-        if (typeof value !== 'string' || !value.trim()) {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-        break;
-    case 'image': {
-        if (!isPlainObject(value)) {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-
-        const { type, data, ...rest } = value;
-
-        if (typeof type !== 'string') {
-            throw new InvalidProfilePropertyError(`${key}.type`, type);
-        }
-
-        const typeParts = type.split('/');
-
-        if (typeParts.length !== 2 || typeParts[0] !== 'image') {
-            throw new InvalidProfilePropertyError(`${key}.type`, type);
-        }
-
-        if (!(data instanceof ArrayBuffer)) {
-            throw new InvalidProfilePropertyError(`${key}.data`, data);
-        }
-
-        const otherProps = Object.keys(rest);
-
-        if (otherProps.length) {
-            throw new UnsupportedProfilePropertyError(`${key}.${otherProps[0]}`);
-        }
-        break;
-    }
-    case 'gender': {
-        if (!['Male', 'Female', 'Other'].includes(value)) {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-        break;
-    }
-    case 'nationality':
-    case 'address': {
-        if (typeof value !== 'string' || !value.trim()) {
-            throw new InvalidProfilePropertyError(key, value);
-        }
-        break;
-    }
-    default:
-        throw new UnsupportedProfilePropertyError(key);
-    }
-};
-
-const assertProfilePropertyRemoval = (key) => {
-    if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
-        throw new InvalidProfileUnsetPropertyError(key);
-    }
-};
-
-export const assertProfileDetails = (details) => {
-    PROFILE_MANDATORY_PROPERTIES.forEach((property) => {
-        const value = details && details[property];
-
-        if (value === undefined) {
-            throw new InvalidProfilePropertyError(property, value);
-        }
-    });
-
-    Object.entries(details).forEach(([key, value]) => assertProfileProperty(key, value));
 };
 
 export const peekProfileDetails = async (identityDescriptor, ipfs, orbitdb) => {

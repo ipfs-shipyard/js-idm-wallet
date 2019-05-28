@@ -7,6 +7,7 @@ import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb
 import * as devicesFns from './devices';
 import * as backupFns from './backup';
 import * as profileFns from './profile';
+import * as appsFns from './applications';
 
 class Identity {
     #descriptor;
@@ -16,10 +17,11 @@ class Identity {
     backup;
     devices;
     profile;
+    apps;
 
     #onRevoke = signal();
 
-    constructor(descriptor, storage, orbitdb, devices, backup, profile) {
+    constructor(descriptor, storage, orbitdb, devices, backup, profile, apps) {
         this.#descriptor = descriptor;
         this.#storage = storage;
         this.#orbitdb = orbitdb;
@@ -27,6 +29,7 @@ class Identity {
         this.backup = backup;
         this.devices = devices;
         this.profile = profile;
+        this.apps = apps;
 
         this.devices.onCurrentRevoke(this.#handleDevicesCurrentRevoke);
 
@@ -108,8 +111,9 @@ export const createIdentity = async ({ did, currentDevice, backupData, profileDe
         const backup = await backupFns.createBackup(backupData, descriptor, storage);
         const profile = await profileFns.createProfile(profileDetails, descriptor, ipfs, orbitdb);
         const devices = await devicesFns.createDevices(currentDevice, descriptor, didm, storage, orbitdb);
+        const apps = await appsFns.createApplications(currentDevice.id, descriptor, orbitdb);
 
-        return new Identity(descriptor, storage, orbitdb, devices, backup, profile);
+        return new Identity(descriptor, storage, orbitdb, devices, backup, profile, apps);
     } catch (err) {
         await removeIdentity(id, storage, didm, orbitdb);
 
@@ -134,6 +138,7 @@ export const removeIdentity = async (id, storage, didm, ipfs) => {
     await devicesFns.removeDevices(descriptor, didm, storage, orbitdb);
     await profileFns.removeProfile(descriptor, ipfs, orbitdb);
     await backupFns.removeBackup(descriptor, storage);
+    await appsFns.removeApplications(descriptor, orbitdb);
 
     await dropOrbitDb(orbitdb);
 };
@@ -153,12 +158,13 @@ export const loadIdentities = async (storage, didm, ipfs) => {
         const backup = await backupFns.restoreBackup(descriptor, storage);
         const profile = await profileFns.restoreProfile(descriptor, ipfs, orbitdb);
         const devices = await devicesFns.restoreDevices(descriptor, didm, storage, orbitdb);
+        const apps = await appsFns.createApplications(devices.getCurrent().id, descriptor, orbitdb);
 
-        const identity = new Identity(descriptor, storage, orbitdb, devices, backup, profile);
+        const identity = new Identity(descriptor, storage, orbitdb, devices, backup, profile, apps);
 
         return Object.assign(acc, { [descriptor.id]: identity });
     }, {});
 };
 
-export { assertDeviceInfo, generateCurrentDevice } from './devices';
-export { assertProfileDetails } from './profile';
+export { assertDeviceInfo, assertProfileDetails } from './utils/asserts';
+export { generateCurrentDevice } from './devices';

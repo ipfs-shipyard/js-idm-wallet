@@ -17,6 +17,7 @@ class Identities {
     #identitiesMap;
     #identitiesLoad;
     #onChange = signal();
+    #onLoad = signal();
 
     constructor(storage, didm, ipfs) {
         this.#storage = storage;
@@ -29,6 +30,8 @@ class Identities {
     }
 
     async load() {
+        const cleanLoad = !this.isLoaded();
+
         if (!this.#identitiesLoad) {
             this.#identitiesLoad = identityFns.loadIdentities(this.#storage, this.#didm, this.#ipfs);
         }
@@ -41,6 +44,10 @@ class Identities {
         }
 
         this.#buildIdentitiesList();
+
+        if (cleanLoad) {
+            this.#onLoad.dispatch(this.#identitiesList);
+        }
 
         return this.#identitiesList;
     }
@@ -110,7 +117,7 @@ class Identities {
         }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.getId()] = identity;
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'create', id: identity.getId() });
 
         return identity;
     }
@@ -141,7 +148,7 @@ class Identities {
         }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.id] = identity;
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'import', id: identity.id });
 
         return identity;
     }
@@ -162,11 +169,15 @@ class Identities {
         await identityFns.removeIdentity(id, this.#storage, this.#didm, this.#ipfs);
 
         delete this.#identitiesMap[id];
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'remove', id });
     }
 
     onChange(fn) {
         return this.#onChange.add(fn);
+    }
+
+    onLoad(fn) {
+        return this.#onLoad.add(fn);
     }
 
     #getIdentityByDid = (did) =>
@@ -185,9 +196,9 @@ class Identities {
         this.#identitiesList.sort((identity1, identity2) => identity1.getAddedAt() - identity2.getAddedAt());
     }
 
-    #updateIdentitiesList = () => {
+    #updateIdentitiesList = (operation) => {
         this.#buildIdentitiesList();
-        this.#onChange.dispatch(this.#identitiesList);
+        this.#onChange.dispatch(this.#identitiesList, operation);
     }
 }
 

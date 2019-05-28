@@ -1,20 +1,12 @@
 import signal from 'pico-signals';
 import { omit, pick, isEqual } from 'lodash';
 import { composePrivateKey, composePublicKey, decomposePrivateKey, decomposePublicKey } from 'crypto-key-composer';
-import {
-    InvalidDevicePropertyError,
-    UnsupportedDeviceInfoPropertyError,
-    UnknownDeviceError,
-    InvalidDeviceOperationError,
-} from '../../utils/errors';
 import { sha256 } from '../../utils/sha';
-import { getCurrentDeviceKey } from './utils/storage-keys';
 import { loadStore, dropStore } from './utils/orbitdb';
-
-const DID_PUBLIC_KEY_PREFIX = 'idm-device-';
-const DEVICE_TYPES = ['phone', 'tablet', 'laptop', 'desktop'];
-const ORBITDB_STORE_NAME = 'devices';
-const ORBITDB_STORE_TYPE = 'keyvalue';
+import { assertDeviceInfo } from './utils/asserts';
+import { UnknownDeviceError, InvalidDeviceOperationError } from '../../utils/errors';
+import { getCurrentDeviceKey } from './utils/storage-keys';
+import { ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE, DID_PUBLIC_KEY_PREFIX } from './utils/constants/devices';
 
 class Devices {
     #currentDeviceDescriptor;
@@ -143,24 +135,6 @@ class Devices {
         return !this.#devicesMap[id] || !!this.#devicesMap[id].revokedAt;
     }
 }
-
-export const assertDeviceInfo = (deviceInfo) => {
-    const { type, name, ...rest } = deviceInfo || {};
-
-    if (!DEVICE_TYPES.includes(type)) {
-        throw new InvalidDevicePropertyError('type', type);
-    }
-
-    if (!name || typeof name !== 'string') {
-        throw new InvalidDevicePropertyError('name', name);
-    }
-
-    const otherProps = Object.keys(rest);
-
-    if (otherProps.length) {
-        throw new UnsupportedDeviceInfoPropertyError(otherProps[0]);
-    }
-};
 
 export const generateCurrentDevice = async (deviceInfo) => {
     const cryptoKeyPair = await crypto.subtle.generateKey(
