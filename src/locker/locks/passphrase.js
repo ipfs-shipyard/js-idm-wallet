@@ -112,7 +112,7 @@ class PassphraseLock {
     }
 
     #configure = async (passphrase) => {
-        const secret = this.#secret.get();
+        const secret = await this.#secret.getAsync();
 
         // Derive a 256-bit key from the passphrase which will be used as the encryption key
         // Then, encrypt the locker secret with that derived key using AES-GCM

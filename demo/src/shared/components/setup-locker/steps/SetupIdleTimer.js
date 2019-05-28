@@ -41,7 +41,7 @@ class SetupIdleTimer extends Component {
     setMaxTime = (value) => {
         const { locker, onComplete } = this.props;
 
-        locker.getIdleTimer().setMaxTime(value)
+        locker.idleTimer.setMaxTime(value)
             .then(onComplete)
             .catch((error) => this.setState({ loading: false, error }));
     }

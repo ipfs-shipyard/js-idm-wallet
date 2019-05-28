@@ -1,4 +1,4 @@
-import createSecret from '../secret';
+import createSecret from '../index';
 
 const undefinedError = new Error('Not defined');
 
@@ -26,6 +26,19 @@ describe('set & get', () => {
         const secret = createSecret(undefinedError);
 
         expect(() => secret.get()).toThrowError(undefinedError);
+    });
+});
+
+describe('getAsync', () => {
+    it('should resolve when the value is set', () => {
+        const secret = createSecret();
+        const mockSecret = new Uint8Array([1, 2, 3]);
+
+        const promise = secret.getAsync();
+
+        secret.set(mockSecret);
+
+        expect(promise).resolves.toBe(mockSecret);
     });
 });
 

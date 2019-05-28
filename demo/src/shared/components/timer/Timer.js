@@ -36,7 +36,7 @@ class Timer extends Component {
         
         this.idleTimeout = setTimeout(this.getRemainingTime, 250);
 
-        this.setState({ time: locker.getIdleTimer().getRemainingTime() });
+        this.setState({ time: locker.idleTimer.getRemainingTime() });
     }
 }
 

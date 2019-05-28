@@ -1,9 +1,12 @@
+import pDefer from 'p-defer';
+import pDelay from 'delay';
 import createPassphraseLock from '../passphrase';
 import { secret, storedPassphrase, crypto, TextEncoder, enableTest, unlockTest } from './mocks';
 
 const mockSecret = {
     generate: jest.fn(() => secret),
     get: jest.fn(() => secret),
+    getAsync: jest.fn(async () => secret),
     set: jest.fn(),
 };
 
@@ -100,12 +103,21 @@ describe('enable', () => {
         expect(lock.isEnabled()).toBe(false);
     });
 
-    it('should fail if no secret available', async () => {
-        const mockSecret = { get: () => { throw new Error('No secret available'); } };
+    it('should wait until secret is available', async () => {
+        const defer = pDefer();
+        const mockSecret = { getAsync: () => defer.promise };
         const lock = await createPassphraseLock(mockStorage, mockSecret);
 
-        await expect(lock.enable('walletPassphrase')).rejects.toThrow('No secret available');
+        const enablePromise = lock.enable('walletPassphrase');
+
+        await pDelay(20);
+
         expect(lock.isEnabled()).toBe(false);
+
+        defer.resolve(secret);
+        await enablePromise;
+
+        expect(lock.isEnabled()).toBe(true);
     });
 });
 

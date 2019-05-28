@@ -1,13 +1,15 @@
 import Ipfs from 'ipfs';
+import createSecret from './secret';
 import createStorage from './storage';
 import createLocker from './locker';
-import createDid from './did';
+import createIdentities from './identities';
+import createDidm from './didm';
 import { keychainPass } from './utils/constants';
 import { UnavailableIpfsError } from './utils/errors';
 
 const createIpfs = (ipfs) => {
     if (ipfs) {
-        if (!ipfs.isOnline || !ipfs.isOnline()) {
+        if (typeof ipfs.isOnline === 'function' && !ipfs.isOnline()) {
             throw new UnavailableIpfsError();
         }
 
@@ -15,7 +17,21 @@ const createIpfs = (ipfs) => {
     }
 
     return new Promise((resolve, reject) => {
-        const node = new Ipfs({ pass: keychainPass });
+        const node = new Ipfs({
+            pass: keychainPass,
+            EXPERIMENTAL: {
+                pubsub: true,
+            },
+            config: {
+                Addresses: {
+                    // WebSocket star possible servers:
+                    // ws-star0.ams = "ws-star0.ams.dwebops.pub ws-star.discovery.libp2p.io"
+                    // ws-star1.par = "ws-star1.par.dwebops.pub"
+                    // ws-star2.sjc = "ws-star2.sjc.dwebops.pub"
+                    Swarm: ['/dns4/ws-star1.par.dwebops.pub/tcp/443/wss/p2p-websocket-star'],
+                },
+            },
+        });
 
         node.on('ready', () => resolve(node));
         node.on('error', (err) => reject(err));
@@ -23,18 +39,22 @@ const createIpfs = (ipfs) => {
 };
 
 const createWallet = async (options) => {
-    const { ipfs } = { ...options };
+    options = { ...options };
 
-    const ipfsNode = await createIpfs(ipfs);
+    const ipfsNode = await createIpfs(options.ipfs);
 
-    const storage = await createStorage();
-    const locker = await createLocker(storage);
-    const did = createDid(ipfsNode);
+    const secret = createSecret();
+
+    const didm = createDidm(ipfsNode);
+    const storage = await createStorage(secret);
+    const locker = await createLocker(storage, secret);
+    const identities = createIdentities(storage, didm, ipfsNode);
 
     return {
+        didm,
         storage,
         locker,
-        did,
+        identities,
     };
 };
 

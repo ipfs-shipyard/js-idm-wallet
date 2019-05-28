@@ -1,14 +1,17 @@
 import signal from 'pico-signals';
+import pDefer from 'p-defer';
+import { LockerLockedError } from '../utils/errors';
 
 const SECRET_LENGTH = 32;
 
 class Secret {
     #secret;
     #undefinedError;
+    #semaphore = pDefer();
     #onDefinedChange = signal();
 
     constructor(undefinedError) {
-        this.#undefinedError = undefinedError;
+        this.#undefinedError = undefinedError || new LockerLockedError();
     }
 
     has() {
@@ -23,11 +26,17 @@ class Secret {
         return this.#secret;
     }
 
+    async getAsync() {
+        await this.#semaphore.promise;
+
+        return this.#secret;
+    }
+
     set(secret) {
         const wasUndefined = !this.has();
 
         this.#secret = secret;
-
+        this.#semaphore.resolve();
         wasUndefined && this.#onDefinedChange.dispatch(this.#secret);
     }
 
@@ -37,6 +46,7 @@ class Secret {
         }
 
         this.#secret = null;
+        this.#semaphore = pDefer();
         this.#onDefinedChange.dispatch(this.#secret);
     }
 
