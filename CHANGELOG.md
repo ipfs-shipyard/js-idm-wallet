@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.4"></a>
+## [0.3.4](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.3...v0.3.4) (2019-05-29)
+
+
+
 <a name="0.3.3"></a>
 ## [0.3.3](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.2...v0.3.3) (2019-05-29)
 
