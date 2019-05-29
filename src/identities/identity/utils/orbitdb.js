@@ -19,7 +19,7 @@ const prefixStoreName = (orbitdb, name) => {
         throw new Error('Can\'t retrieve identity id from OrbitDB');
     }
 
-    return `${prefixStoreName}.${name}`;
+    return `${identityId}.${name}`;
 };
 
 export const getOrbitDb = async (identityId, ipfs, options) => {

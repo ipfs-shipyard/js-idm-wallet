@@ -137,7 +137,7 @@ const peekDropStore = (identityId, orbitdb, orbitdbStore) => {
     const timeoutId = setTimeout(async () => {
         try {
             await orbitdbStore.drop();
-            await dropOrbitDbIfEmpty();
+            await dropOrbitDbIfEmpty(orbitdb);
         } catch (err) {
             console.warn(`Unable to drop profile OrbitDB store for identity after peeking: ${identityId.id}`, err);
         }
