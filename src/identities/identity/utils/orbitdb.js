@@ -1,6 +1,7 @@
 import OrbitDb from 'orbit-db';
 import { wrap } from 'lodash';
 
+const identityIdSymbol = Symbol();
 const instances = new Map();
 const instancesStores = new Map();
 
@@ -11,15 +12,25 @@ class DummyBroker {
     async disconnect() {}
 }
 
-export const getOrbitDb = async (id, ipfs, options) => {
-    let orbitdb = instances.get(id);
+const prefixStoreName = (orbitdb, name) => {
+    const identityId = orbitdb[identityIdSymbol];
+
+    if (!identityId) {
+        throw new Error('Can\'t retrieve identity id from OrbitDB');
+    }
+
+    return `${prefixStoreName}.${name}`;
+};
+
+export const getOrbitDb = async (identityId, ipfs, options) => {
+    let orbitdb = instances.get(identityId);
 
     if (orbitdb) {
         return orbitdb;
     }
 
     options = {
-        directory: `./orbitdb-${id}`,
+        directory: `./orbitdb-${identityId}`,
         replicate: true,
         ...options,
     };
@@ -33,15 +44,18 @@ export const getOrbitDb = async (id, ipfs, options) => {
 
     orbitdb = await OrbitDb.createInstance(ipfs, options);
 
-    instances.set(id, orbitdb);
+    instances.set(identityId, orbitdb);
     instancesStores.set(orbitdb, new Map());
 
     // Wrap disconnect() in order to remove from the cache automatically
     orbitdb.disconnect = wrap(orbitdb.disconnect, async (disconnect) => {
         await disconnect.call(orbitdb, disconnect);
-        instances.delete(id);
+        instances.delete(identityId);
         instancesStores.delete(orbitdb);
     });
+
+    // Mark the identity id associated with this orbitdb instance
+    Object.defineProperty(orbitdb, identityIdSymbol, { value: identityId });
 
     return orbitdb;
 };
@@ -79,7 +93,9 @@ export const openStore = async (orbitdb, name, type, options) => {
         return store;
     }
 
-    store = await orbitdb.open(name, {
+    const storeName = prefixStoreName(orbitdb, name);
+
+    store = await orbitdb.open(storeName, {
         type,
         create: true,
         accessController: {
