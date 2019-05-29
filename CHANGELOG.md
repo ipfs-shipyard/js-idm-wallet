@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.3"></a>
+## [0.3.3](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.2...v0.3.3) (2019-05-29)
+
+
+### Bug Fixes
+
+* fix waitForReplication wrong parameter ([b1cd200](https://github.com/ipfs-shipyard/js-idm-wallet/commit/b1cd200))
+
+
+
 <a name="0.3.2"></a>
 ## [0.3.2](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.1...v0.3.2) (2019-05-29)
 
