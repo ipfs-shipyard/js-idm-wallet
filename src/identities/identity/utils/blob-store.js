@@ -49,8 +49,6 @@ class BlobStore {
 
         // Skip if already removed to avoid triggering change
         if (ref) {
-            await this.#ipfs.pin.rm(ref.hash);
-
             this.#refs.delete(key);
             this.#notifyChange(key);
         }
@@ -71,8 +69,8 @@ class BlobStore {
 
         await Promise.all([
             ...removedKeys.map((key) => this.#syncRemoved(key)),
-            ...addedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),
-            ...updatedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),
+            ...addedKeys.map((key) => this.#syncAdded(key, refs[key])),
+            ...updatedKeys.map((key) => this.#syncUpdated(key, refs[key])),
         ]);
     }
 
@@ -81,19 +79,15 @@ class BlobStore {
     }
 
     #syncRemoved = async (key) => {
-        const ref = this.#refs.get(key);
-
         this.#refs.delete(key);
         this.#notifyChange(key);
-
-        try {
-            await this.#ipfs.pin.rm(ref.hash);
-        } catch (err) {
-            console.warn(`Unable to remove "${key}" from blob store`, err);
-        }
     }
 
-    #syncAddedOrUpdated = async (key, ref) => {
+    #syncUpdated = async (key, ref) => {
+        await this.#syncAdded(key, ref);
+    }
+
+    #syncAdded = async (key, ref) => {
         ref = {
             ...ref,
             content: {
