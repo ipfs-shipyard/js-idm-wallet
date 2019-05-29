@@ -142,12 +142,10 @@ export const loadIdentities = async (storage, didm, ipfs) => {
     const identitiesKeys = await storage.list({
         gte: DESCRIPTOR_KEY_PREFIX,
         lte: `${DESCRIPTOR_KEY_PREFIX}\xFF`,
-        values: false,
+        keys: false,
     });
 
-    return pReduce(identitiesKeys, async (acc, key) => {
-        const descriptor = await storage.get(key);
-
+    return pReduce(identitiesKeys, async (acc, descriptor) => {
         const orbitdb = await getOrbitDb(descriptor.id, ipfs, {
             replicate: !descriptor.revoked,
         });
