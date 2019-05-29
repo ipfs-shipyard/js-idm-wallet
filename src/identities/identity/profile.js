@@ -234,7 +234,7 @@ export const createProfile = async (details, identityDescriptor, ipfs, orbitdb) 
             await profile.setProperty(key, value); // eslint-disable-line no-await-in-loop
         }
     } else {
-        await waitProfileReplication(orbitdbStore, ipfs);
+        await waitProfileReplication(orbitdbStore, blobStore);
     }
 
     return profile;
