@@ -95,7 +95,7 @@
     "did-ipid": "^0.2.0",
     "hex-array": "^1.0.0",
     "human-crypto-keys": "^0.1.4",
-    "ipfs": "^0.35.0",
+    "ipfs": "git://github.com/satazor/js-ipfs.git#ipfs-camp",
     "level": "^5.0.1",
     "normalize-value": "^1.0.1",
     "orbit-db": "^0.20.1",

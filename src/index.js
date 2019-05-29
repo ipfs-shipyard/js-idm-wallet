@@ -50,12 +50,19 @@ const createWallet = async (options) => {
     const locker = await createLocker(storage, secret);
     const identities = createIdentities(storage, didm, ipfsNode);
 
-    return {
+    const idmWallet = {
         didm,
         storage,
         locker,
         identities,
     };
+
+    // Expose a global for the idm wallet for debug purposes only in DEV
+    if (process.env.NODE_ENV === 'development') {
+        window.__IDM_WALLET__ = idmWallet;
+    }
+
+    return idmWallet;
 };
 
 export default createWallet;
