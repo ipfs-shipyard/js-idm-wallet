@@ -69,7 +69,7 @@ class BlobStore {
             return currentRef && (ref.type !== currentRef.type || ref.hash !== currentRef.hash);
         });
 
-        return Promise.all([
+        await Promise.all([
             ...removedKeys.map((key) => this.#syncRemoved(key)),
             ...addedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),
             ...updatedKeys.map((key) => this.#syncAddedOrUpdated(key, refs[key])),

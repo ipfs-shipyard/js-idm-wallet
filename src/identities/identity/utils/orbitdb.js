@@ -133,3 +133,39 @@ export const dropStore = async (orbitdb, name, type, options) => {
 
     await store.drop();
 };
+
+export const waitStoreReplication = (orbitdbStore, options) => {
+    options = {
+        timeout: 30000,
+        completeCondition: () => true,
+        ...options,
+    };
+
+    let pendingTimeout;
+
+    return new Promise((resolve) => {
+        const restartTimer = () => {
+            clearTimeout(pendingTimeout);
+            pendingTimeout = setTimeout(() => resolve(false), options.timeout);
+        };
+
+        restartTimer();
+
+        if (options.completeCondition()) {
+            return resolve(true);
+        }
+
+        orbitdbStore.events.on('replicate', () => restartTimer());
+        orbitdbStore.events.on('replicate.progress', () => restartTimer());
+        orbitdbStore.events.on('replicated', () => {
+            restartTimer();
+
+            const { queued, buffered } = orbitdbStore.replicationStatus;
+
+            // Be sure to check if the replication is finished because OrbitDB fires `replicated` several times
+            if (queued <= 0 && buffered <= 0 && options.completeCondition()) {
+                resolve(true);
+            }
+        });
+    });
+};
