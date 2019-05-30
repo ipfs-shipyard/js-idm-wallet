@@ -30,8 +30,8 @@
     "es"
   ],
   "scripts": {
-    "build:commonjs": "BABEL_ENV=commonjs babel src -d lib",
-    "build:es": "BABEL_ENV=es babel src -d es",
+    "build:commonjs": "BABEL_ENV=commonjs babel src -d lib --delete-dir-on-start",
+    "build:es": "BABEL_ENV=es babel src -d es --delete-dir-on-start",
     "build": "npm run build:commonjs && npm run build:es",
     "test": "jest",
     "lint": "eslint .",
