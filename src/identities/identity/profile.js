@@ -125,7 +125,7 @@ const waitProfileReplication = async (orbitdbStore, blobStore) => {
 
     if (image) {
         await Promise.race([
-            pDelay(PEEK_REPLICATION_WAIT_TIME).then(() => new ProfileReplicationTimeoutError()),
+            pDelay.reject(PEEK_REPLICATION_WAIT_TIME, { value: new ProfileReplicationTimeoutError() }),
             blobStore.sync({ image }).catch((err) => {
                 console.warn('Unable to replicate image blob, skipping..', err);
             }),
