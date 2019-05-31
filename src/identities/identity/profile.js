@@ -1,5 +1,6 @@
 import signal from 'pico-signals';
 import pDelay from 'delay';
+import pSeries from 'p-series';
 import { pick, get, has, isPlainObject, isEqual } from 'lodash';
 import {
     InvalidProfilePropertyError,
@@ -46,25 +47,30 @@ class Profile {
     async setProperty(key, value) {
         assertProfileProperty(key, value);
 
-        if (PROFILE_BLOB_PROPERTIES.includes(key)) {
-            const blobRef = await this.#blobStore.put(key, value);
-
-            value = pick(blobRef, 'type', 'hash');
-        }
-
-        if (!isEqual(this.#orbitdbStore.get(key), value)) {
-            await this.#orbitdbStore.put(key, value);
-        }
+        await this.#saveProperty(key, value);
     }
 
     async unsetProperty(key) {
-        if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
-            throw new InvalidProfileUnsetPropertyError(key);
-        }
+        assertProfilePropertyRemoval(key);
 
-        if (has(this.#orbitdbStore.all, key)) {
-            await this.#orbitdbStore.del(key);
-        }
+        await this.#removeProperty(key);
+    }
+
+    async setProperties(properties) {
+        const tasks = Object.entries(properties)
+        .map(([key, value]) => {
+            if (value === undefined) {
+                assertProfilePropertyRemoval(key);
+
+                return () => this.#removeProperty(key);
+            }
+
+            assertProfileProperty(key, value);
+
+            return () => this.#saveProperty(key, value);
+        });
+
+        return pSeries(tasks);
     }
 
     getDetails() {
@@ -74,6 +80,24 @@ class Profile {
     onChange(fn) {
         return this.#onChange.add(fn);
     }
+
+    #saveProperty = async (key, value) => {
+        if (PROFILE_BLOB_PROPERTIES.includes(key)) {
+            const blobRef = await this.#blobStore.put(key, value);
+
+            value = pick(blobRef, 'type', 'hash');
+        }
+
+        if (!isEqual(this.#orbitdbStore.get(key), value)) {
+            await this.#orbitdbStore.put(key, value);
+        }
+    };
+
+    #removeProperty = async (key) => {
+        if (has(this.#orbitdbStore.all, key)) {
+            await this.#orbitdbStore.del(key);
+        }
+    };
 
     #syncBlobStore = () => {
         const blobRefs = pick(this.#orbitdbStore.all, PROFILE_BLOB_PROPERTIES);
@@ -213,6 +237,12 @@ const assertProfileProperty = (key, value) => {
     }
     default:
         throw new UnsupportedProfilePropertyError(key);
+    }
+};
+
+const assertProfilePropertyRemoval = (key) => {
+    if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
+        throw new InvalidProfileUnsetPropertyError(key);
     }
 };
 
