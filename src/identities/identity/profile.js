@@ -174,17 +174,40 @@ const assertProfileProperty = (key, value) => {
         if (!isPlainObject(value)) {
             throw new InvalidProfilePropertyError(key, value);
         }
-        if (typeof value.type !== 'string') {
-            throw new InvalidProfilePropertyError(`${key}.type`, value);
+
+        const { type, data, ...rest } = value;
+
+        if (typeof type !== 'string') {
+            throw new InvalidProfilePropertyError(`${key}.type`, type);
         }
 
-        const typeParts = value.type.split('/');
+        const typeParts = type.split('/');
 
         if (typeParts.length !== 2 || typeParts[0] !== 'image') {
-            throw new InvalidProfilePropertyError(`${key}.type`, value);
+            throw new InvalidProfilePropertyError(`${key}.type`, type);
         }
-        if (!(value.data instanceof ArrayBuffer)) {
-            throw new InvalidProfilePropertyError(`${key}.data`, value);
+
+        if (!(data instanceof ArrayBuffer)) {
+            throw new InvalidProfilePropertyError(`${key}.data`, data);
+        }
+
+        const otherProps = Object.keys(rest);
+
+        if (otherProps.length) {
+            throw new UnsupportedProfilePropertyError(`${key}.${otherProps[0]}`);
+        }
+        break;
+    }
+    case 'gender': {
+        if (!['Male', 'Female', 'Other'].includes(value)) {
+            throw new InvalidProfilePropertyError(key, value);
+        }
+        break;
+    }
+    case 'nationality':
+    case 'address': {
+        if (typeof value !== 'string' || !value.trim()) {
+            throw new InvalidProfilePropertyError(key, value);
         }
         break;
     }
@@ -197,7 +220,7 @@ export const assertProfileDetails = (details) => {
     PROFILE_MANDATORY_PROPERTIES.forEach((property) => {
         const value = details && details[property];
 
-        if (value == null) {
+        if (value === undefined) {
             throw new InvalidProfilePropertyError(property, value);
         }
     });
