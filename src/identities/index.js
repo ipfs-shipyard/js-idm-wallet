@@ -45,6 +45,10 @@ class Identities {
         return this.#identitiesList;
     }
 
+    has(id) {
+        return Boolean(this.#identitiesMap[id]);
+    }
+
     get(id) {
         if (!this.#identitiesMap) {
             throw new IdentitiesNotLoadedError();
