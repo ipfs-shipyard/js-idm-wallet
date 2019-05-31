@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.3.6"></a>
+## [0.3.6](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.5...v0.3.6) (2019-05-31)
+
+
+### Bug Fixes
+
+* fix missing dependencies from package.json ([343517c](https://github.com/ipfs-shipyard/js-idm-wallet/commit/343517c))
+
+
+### Features
+
+* add several features to identities, see summary ([#12](https://github.com/ipfs-shipyard/js-idm-wallet/issues/12)) ([2d2972c](https://github.com/ipfs-shipyard/js-idm-wallet/commit/2d2972c))
+
+
+
 <a name="0.3.5"></a>
 ## [0.3.5](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.3.4...v0.3.5) (2019-05-30)
 
