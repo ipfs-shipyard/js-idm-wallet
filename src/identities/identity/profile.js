@@ -1,5 +1,6 @@
 import signal from 'pico-signals';
 import pDelay from 'delay';
+import pSeries from 'p-series';
 import { pick, get, has, isPlainObject, isEqual } from 'lodash';
 import {
     InvalidProfilePropertyError,
@@ -46,25 +47,30 @@ class Profile {
     async setProperty(key, value) {
         assertProfileProperty(key, value);
 
-        if (PROFILE_BLOB_PROPERTIES.includes(key)) {
-            const blobRef = await this.#blobStore.put(key, value);
-
-            value = pick(blobRef, 'type', 'hash');
-        }
-
-        if (!isEqual(this.#orbitdbStore.get(key), value)) {
-            await this.#orbitdbStore.put(key, value);
-        }
+        await this.#saveProperty(key, value);
     }
 
     async unsetProperty(key) {
-        if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
-            throw new InvalidProfileUnsetPropertyError(key);
-        }
+        assertProfilePropertyRemoval(key);
 
-        if (has(this.#orbitdbStore.all, key)) {
-            await this.#orbitdbStore.del(key);
-        }
+        await this.#removeProperty(key);
+    }
+
+    async setProperties(properties) {
+        const tasks = Object.entries(properties)
+        .map(([key, value]) => {
+            if (value === undefined) {
+                assertProfilePropertyRemoval(key);
+
+                return () => this.#removeProperty(key);
+            }
+
+            assertProfileProperty(key, value);
+
+            return () => this.#saveProperty(key, value);
+        });
+
+        return pSeries(tasks);
     }
 
     getDetails() {
@@ -74,6 +80,24 @@ class Profile {
     onChange(fn) {
         return this.#onChange.add(fn);
     }
+
+    #saveProperty = async (key, value) => {
+        if (PROFILE_BLOB_PROPERTIES.includes(key)) {
+            const blobRef = await this.#blobStore.put(key, value);
+
+            value = pick(blobRef, 'type', 'hash');
+        }
+
+        if (!isEqual(this.#orbitdbStore.get(key), value)) {
+            await this.#orbitdbStore.put(key, value);
+        }
+    };
+
+    #removeProperty = async (key) => {
+        if (has(this.#orbitdbStore.all, key)) {
+            await this.#orbitdbStore.del(key);
+        }
+    };
 
     #syncBlobStore = () => {
         const blobRefs = pick(this.#orbitdbStore.all, PROFILE_BLOB_PROPERTIES);
@@ -174,17 +198,40 @@ const assertProfileProperty = (key, value) => {
         if (!isPlainObject(value)) {
             throw new InvalidProfilePropertyError(key, value);
         }
-        if (typeof value.type !== 'string') {
-            throw new InvalidProfilePropertyError(`${key}.type`, value);
+
+        const { type, data, ...rest } = value;
+
+        if (typeof type !== 'string') {
+            throw new InvalidProfilePropertyError(`${key}.type`, type);
         }
 
-        const typeParts = value.type.split('/');
+        const typeParts = type.split('/');
 
         if (typeParts.length !== 2 || typeParts[0] !== 'image') {
-            throw new InvalidProfilePropertyError(`${key}.type`, value);
+            throw new InvalidProfilePropertyError(`${key}.type`, type);
         }
-        if (!(value.data instanceof ArrayBuffer)) {
-            throw new InvalidProfilePropertyError(`${key}.data`, value);
+
+        if (!(data instanceof ArrayBuffer)) {
+            throw new InvalidProfilePropertyError(`${key}.data`, data);
+        }
+
+        const otherProps = Object.keys(rest);
+
+        if (otherProps.length) {
+            throw new UnsupportedProfilePropertyError(`${key}.${otherProps[0]}`);
+        }
+        break;
+    }
+    case 'gender': {
+        if (!['Male', 'Female', 'Other'].includes(value)) {
+            throw new InvalidProfilePropertyError(key, value);
+        }
+        break;
+    }
+    case 'nationality':
+    case 'address': {
+        if (typeof value !== 'string' || !value.trim()) {
+            throw new InvalidProfilePropertyError(key, value);
         }
         break;
     }
@@ -193,11 +240,17 @@ const assertProfileProperty = (key, value) => {
     }
 };
 
+const assertProfilePropertyRemoval = (key) => {
+    if (PROFILE_MANDATORY_PROPERTIES.includes(key)) {
+        throw new InvalidProfileUnsetPropertyError(key);
+    }
+};
+
 export const assertProfileDetails = (details) => {
     PROFILE_MANDATORY_PROPERTIES.forEach((property) => {
         const value = details && details[property];
 
-        if (value == null) {
+        if (value === undefined) {
             throw new InvalidProfilePropertyError(property, value);
         }
     });
