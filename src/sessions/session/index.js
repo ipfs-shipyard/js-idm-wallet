@@ -32,12 +32,12 @@ class Session {
     }
 }
 
-export const createSession = async ({ app, options = {} }, identity, storage) => {
+export const createSession = async ({ app, options }, identity, storage) => {
     assertSessionOptions(options);
 
     options = {
+        maxAge: DEFAULT_MAX_AGE,
         ...options,
-        maxAge: options.maxAge || DEFAULT_MAX_AGE,
     };
 
     await identity.apps.add(app);

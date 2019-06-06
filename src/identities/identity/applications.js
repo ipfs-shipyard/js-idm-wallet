@@ -11,6 +11,8 @@ class Applications {
     #appsStore;
     #appsDevicesStore;
 
+    #currentDeviceAppsList = [];
+
     #onChange = signal();
     #onRevoke = signal();
     #onLinkChange = signal();
@@ -22,23 +24,16 @@ class Applications {
         this.#appsStore = appsStore;
         this.#appsDevicesStore = appsDevicesStore;
 
-        this.#appsStore.events.on('write', this.#handleStoreChanges);
-        this.#appsStore.events.on('replicated', this.#handleStoreChanges);
-        this.#appsDevicesStore.events.on('write', this.#handleStoreChanges);
-        this.#appsDevicesStore.events.on('replicated', this.#handleStoreChanges);
+        this.#appsStore.events.on('write', this.#handleAppsStoreChange);
+        this.#appsStore.events.on('replicated', this.#handleAppsStoreChange);
+        this.#appsDevicesStore.events.on('write', this.#handleAppsDevicesStoreChange);
+        this.#appsDevicesStore.events.on('replicated', this.#handleAppsDevicesStoreChange);
+
+        this.#updateCurrentDeviceAppsList();
     }
 
     list() {
-        return Object.keys(this.#appsDevicesStore.all).reduce((acc, key) => {
-            const [appId, deviceId] = key.split('!');
-            const app = this.#appsStore.get(appId);
-
-            if (app && deviceId === this.#currentDeviceId) {
-                acc.push(app);
-            }
-
-            return acc;
-        }, []);
+        return this.#currentDeviceAppsList;
     }
 
     async add(app) {
@@ -48,12 +43,12 @@ class Applications {
     }
 
     async revoke(appId) {
-        const appsDevicesKeys = Object.keys(this.#appsDevicesStore.all).filter((key) => key.includes(appId));
+        const appsDevicesKeys = Object.keys(this.#appsDevicesStore.all);
+        const filteredKeys = appsDevicesKeys.filter((key) => this.#parseCurrentDeviceAppKey(key).appId === appId);
 
-        await Promise.all(appsDevicesKeys.map((key) => this.#appsDevicesStore.del(key)));
+        await Promise.all(filteredKeys.map((key) => this.#appsDevicesStore.del(key)));
+
         await this.#appsStore.del(appId);
-
-        this.#dispatchRevoke(appId);
     }
 
     async linkCurrentDevice(appId) {
@@ -68,19 +63,16 @@ class Applications {
         }
 
         await this.#appsDevicesStore.put(key, true);
-
-        this.#dispatchLinkCurrentChange(appId, true);
     }
 
     async unlinkCurrentDevice(appId) {
         const key = this.#getCurrentDeviceAppKey(appId);
-        const wasLinked = this.#appsDevicesStore.get(key);
+
+        if (typeof this.#appsDevicesStore.all[key] === 'undefined') {
+            return;
+        }
 
         await this.#appsDevicesStore.del(key);
-
-        if (wasLinked) {
-            this.#dispatchLinkCurrentChange(appId, false);
-        }
     }
 
     onChange(fn) {
@@ -97,6 +89,25 @@ class Applications {
 
     #getCurrentDeviceAppKey = (appId) => `${appId}!${this.#currentDeviceId}`
 
+    #parseCurrentDeviceAppKey = (key) => {
+        const [appId, deviceId] = key.split('!');
+
+        return { appId, deviceId };
+    }
+
+    #updateCurrentDeviceAppsList = () => {
+        this.#currentDeviceAppsList = Object.keys(this.#appsDevicesStore.all).reduce((acc, key) => {
+            const { appId, deviceId } = this.#parseCurrentDeviceAppKey(key);
+            const app = this.#appsStore.get(appId);
+
+            if (app && deviceId === this.#currentDeviceId) {
+                acc.push(app);
+            }
+
+            return acc;
+        }, []);
+    }
+
     #dispatchRevoke = (appId) => {
         this.#onRevoke.dispatch(appId);
     }
@@ -105,8 +116,33 @@ class Applications {
         this.#onLinkChange.dispatch({ appId, deviceId: this.currentDeviceId, isLinked });
     }
 
-    #handleStoreChanges = () => {
-        this.#onChange.dispatch(this.list(), this.identityDescriptor.id);
+    #handleAppsStoreChange = (store, { payload }) => {
+        const { op, key } = payload;
+
+        this.#updateCurrentDeviceAppsList();
+
+        this.#onChange.dispatch(this.#currentDeviceAppsList, this.#identityDescriptor.id);
+
+        if (op === 'DEL') {
+            this.#dispatchRevoke(key);
+        }
+    }
+
+    #handleAppsDevicesStoreChange = (store, { payload }) => {
+        const { op, key } = payload;
+        const { appId, deviceId } = this.#parseCurrentDeviceAppKey(key);
+
+        this.#updateCurrentDeviceAppsList();
+
+        this.#onChange.dispatch(this.#currentDeviceAppsList, this.#identityDescriptor.id);
+
+        if (deviceId === this.#currentDeviceId) {
+            if (op === 'PUT') {
+                this.#dispatchLinkCurrentChange(appId, true);
+            } else if (op === 'DEL') {
+                this.#dispatchLinkCurrentChange(appId, false);
+            }
+        }
     }
 }
 

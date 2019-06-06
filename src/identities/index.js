@@ -30,10 +30,12 @@ class Identities {
     }
 
     async load() {
-        const cleanLoad = !this.isLoaded();
+        let cleanLoad = false;
 
         if (!this.#identitiesLoad) {
             this.#identitiesLoad = identityFns.loadIdentities(this.#storage, this.#didm, this.#ipfs);
+
+            cleanLoad = !this.isLoaded();
         }
 
         try {

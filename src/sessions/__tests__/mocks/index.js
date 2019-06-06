@@ -36,6 +36,7 @@ export const createMockIdentity = (id = mockIdentityId) => {
                 return Promise.resolve(app);
             }),
             revoke: jest.fn((appId) => {
+                onLinkCurrentChange.dispatch({ appId, isLinked: false });
                 onRevoke.dispatch(appId);
 
                 Promise.resolve();

@@ -10,10 +10,12 @@ class Wallet extends Component {
     state = {
         wallet: undefined,
     };
-
+    
     componentDidMount() {
         createWallet().then((wallet) => {
             wallet.locker.onLockedChange(this.handleLockedChanged);
+
+            window.wallet = wallet;
 
             this.setState({ wallet });
         });
