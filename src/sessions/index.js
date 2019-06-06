@@ -6,7 +6,7 @@ class Sessions {
     #storage;
     #identities;
 
-    #identityListeners = {};
+    #identityListeners = new Map();
 
     constructor(sessions, storage, identities) {
         this.#sessions = sessions;
@@ -32,7 +32,7 @@ class Sessions {
     }
 
     async create(identityId, app, options) {
-        const identity = await this.#getIdentity(identityId);
+        const identity = this.#getIdentity(identityId);
 
         const session = this.#getSessionByIdentityAndAppId(identityId, app.id);
 
@@ -60,9 +60,9 @@ class Sessions {
             return;
         }
 
-        this.#removeIdentityListeners(session.getIdentityId());
-
         delete this.#sessions[sessionId];
+
+        this.#removeIdentityListeners(session.getIdentityId());
 
         try {
             await removeSession(sessionId, this.#identities, this.#storage);
@@ -86,14 +86,12 @@ class Sessions {
         await Promise.all(identitySessions.map((session) => this.destroy(session.getId())));
     }
 
-    #getIdentity = async (identityId) => {
+    #getIdentity = (identityId) => {
         try {
-            const identity = this.#identities.get(identityId);
-
-            return identity;
+            return this.#identities.get(identityId);
         } catch (err) {
             if (err instanceof UnknownIdentityError) {
-                await this.#destroySessionsByIdentityId(identityId);
+                this.#destroySessionsByIdentityId(identityId);
             }
 
             throw err;
@@ -101,33 +99,34 @@ class Sessions {
     }
 
     #addIdentityListeners = (identityId) => {
-        if (this.#identityListeners[identityId]) {
-            this.#identityListeners[identityId].counter += 1;
+        const identity = this.#getIdentity(identityId);
+        const listeners = this.#identityListeners.get(identityId);
+
+        if (listeners) {
+            listeners.counter += 1;
 
             return;
         }
 
-        const identity = this.#identities.get(identityId);
-
-        this.#identityListeners[identityId] = {
+        this.#identityListeners.set(identityId, {
             counter: 1,
-            removeOnRevoke: identity.apps.onRevoke((...args) => this.#handleAppRevoke(identityId, ...args)),
-            removeOnLinkCurrent: identity.apps.onLinkCurrentChange((...args) => this.#handleLinkCurrentChange(identityId, ...args)),
-        };
+            removeListener: identity.apps.onLinkCurrentChange((...args) => this.#handleLinkCurrentChange(identityId, ...args)),
+        });
     }
 
     #removeIdentityListeners = (identityId) => {
-        if (!this.#identityListeners[identityId]) {
+        const listeners = this.#identityListeners.get(identityId);
+
+        if (!listeners) {
             return;
         }
 
-        this.#identityListeners[identityId].counter -= 1;
+        listeners.counter -= 1;
 
-        if (this.#identityListeners[identityId].counter === 0) {
-            this.#identityListeners[identityId].removeOnRevoke && this.#identityListeners[identityId].removeOnRevoke();
-            this.#identityListeners[identityId].removeOnLinkCurrent && this.#identityListeners[identityId].removeOnLinkCurrent();
+        if (listeners.counter === 0) {
+            listeners.removeListener && listeners.removeListener();
 
-            delete this.#identityListeners[identityId];
+            this.#identityListeners.delete(identityId);
         }
     }
 
@@ -158,20 +157,6 @@ class Sessions {
         }
 
         await this.#destroySessionsByIdentityId(id);
-    }
-
-    #handleAppRevoke = async (identityId, appId) => {
-        const session = this.#getSessionByIdentityAndAppId(identityId, appId);
-
-        if (!session) {
-            return;
-        }
-
-        try {
-            await this.destroy(session.getId());
-        } catch (err) {
-            console.warn(`Something went wrong destroying session after app "${appId}" revocation for identity "${identityId}"`);
-        }
     }
 
     #handleLinkCurrentChange = async (identityId, { appId, isLinked }) => {

@@ -9,10 +9,6 @@ const mockApp = {
 };
 
 class Sessions extends Component {
-    componentDidMount() {
-        window.wallet = this.props.wallet;
-    }
-
     render() {
         return (
             <div className="section">

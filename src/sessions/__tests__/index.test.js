@@ -89,7 +89,6 @@ describe('create', () => {
 
         expect(sessions.getById(session.getId())).toBe(session);
 
-        expect(mockIdentity.apps.onRevoke).toHaveBeenCalledTimes(1);
         expect(mockIdentity.apps.onLinkCurrentChange).toHaveBeenCalledTimes(1);
     });
 
@@ -137,7 +136,6 @@ describe('create', () => {
 
         // Should create a new session after the previous session was removed
         expect(mockStorage.set).toHaveBeenCalledTimes(1);
-        expect(mockIdentity.apps.onRevoke).toHaveBeenCalledTimes(1);
         expect(mockIdentity.apps.onLinkCurrentChange).toHaveBeenCalledTimes(1);
 
         expect(sessions.getById(newSession.getId())).toBe(newSession);
@@ -186,13 +184,11 @@ describe('destroy', () => {
 
         expect(sessions.getById(session.getId())).toBe(session);
         expect(mockStorage.set).toHaveBeenCalledTimes(1);
-        expect(mockIdentity.apps.onRevoke).toHaveBeenCalledTimes(1);
         expect(mockIdentity.apps.onLinkCurrentChange).toHaveBeenCalledTimes(1);
 
         await expect(sessions.destroy(session.getId())).rejects.toThrow('foo');
 
         expect(sessions.getById(session.getId())).toBe(session);
-        expect(mockIdentity.apps.onRevoke).toHaveBeenCalledTimes(2);
         expect(mockIdentity.apps.onLinkCurrentChange).toHaveBeenCalledTimes(2);
     });
 });
@@ -323,7 +319,7 @@ describe('handleAppRevoke', () => {
             expect(mockStorage.remove).toHaveBeenCalledTimes(0);
 
             expect(console.warn).toHaveBeenCalledTimes(1);
-            expect(console.warn).toHaveBeenCalledWith('Something went wrong destroying session after app "4d5e6f" revocation for identity "1a2b3c"');
+            expect(console.warn).toHaveBeenCalledWith('Something went wrong destroying session after app "4d5e6f" revocation for identity "1a2b3c" in current device');
 
             done();
         });
