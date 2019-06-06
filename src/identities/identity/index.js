@@ -111,13 +111,13 @@ export const createIdentity = async ({ did, currentDevice, backupData, profileDe
 
         return new Identity(descriptor, storage, orbitdb, devices, backup, profile);
     } catch (err) {
-        await removeIdentity(id, storage, didm, orbitdb);
+        await removeIdentity(id, storage, orbitdb);
 
         throw new UnableCreateIdentityError(err.message, err.code);
     }
 };
 
-export const removeIdentity = async (id, storage, didm, ipfs) => {
+export const removeIdentity = async (id, storage, ipfs) => {
     const descriptorKey = getDescriptorKey(id);
     const descriptor = await storage.get(descriptorKey);
 
@@ -131,7 +131,7 @@ export const removeIdentity = async (id, storage, didm, ipfs) => {
         replicate: false,
     });
 
-    await devicesFns.removeDevices(descriptor, didm, storage, orbitdb);
+    await devicesFns.removeDevices(descriptor, storage, orbitdb);
     await profileFns.removeProfile(descriptor, ipfs, orbitdb);
     await backupFns.removeBackup(descriptor, storage);
 

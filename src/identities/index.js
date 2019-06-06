@@ -140,7 +140,7 @@ class Identities {
             currentDevice,
         }, this.#storage, this.#didm, this.#ipfs);
 
-        this.#identitiesMap[identity.id] = identity;
+        this.#identitiesMap[identity.getId()] = identity;
         this.#updateIdentitiesList();
 
         return identity;
@@ -150,16 +150,19 @@ class Identities {
         await this.load();
 
         const identity = this.get(id);
-        const did = identity.getDid();
-        const didMethod = parseDid(did).method;
 
-        this.#assertDidmSupport(didMethod, 'update');
+        if (!identity.isRevoked()) {
+            const did = identity.getDid();
+            const didMethod = parseDid(did).method;
 
-        await this.#didm.update(did, params, (document) => {
-            document.revokePublicKey(identity.devices.getCurrent().id);
-        });
+            this.#assertDidmSupport(didMethod, 'update');
 
-        await identityFns.removeIdentity(id, this.#storage, this.#didm, this.#ipfs);
+            await this.#didm.update(did, params, (document) => {
+                document.revokePublicKey(identity.devices.getCurrent().id);
+            });
+        }
+
+        await identityFns.removeIdentity(id, this.#storage, this.#ipfs);
 
         delete this.#identitiesMap[id];
         this.#updateIdentitiesList();

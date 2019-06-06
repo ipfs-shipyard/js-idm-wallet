@@ -224,7 +224,7 @@ export const restoreDevices = async (identityDescriptor, didm, storage, orbitdb)
     return new Devices(currentDeviceDescriptor, identityDescriptor, didm, orbitdbStore);
 };
 
-export const removeDevices = async (identityDescriptor, didm, storage, orbitdb) => {
+export const removeDevices = async (identityDescriptor, storage, orbitdb) => {
     await storage.remove(getCurrentDeviceKey(identityDescriptor.id));
     await dropStore(orbitdb, ORBITDB_STORE_NAME, ORBITDB_STORE_TYPE);
 };
