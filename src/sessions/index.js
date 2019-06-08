@@ -1,5 +1,6 @@
+import signal from 'pico-signals';
 import { loadSessions, createSession, removeSession } from './session';
-import { UnknownSessionError, UnknownIdentityError } from '../utils/errors';
+import { UnknownSessionError, UnknownIdentityError, CreateSessionRevokedIdentityError } from '../utils/errors';
 
 class Sessions {
     #sessions;
@@ -7,6 +8,7 @@ class Sessions {
     #identities;
 
     #identityListeners = new Map();
+    #onDestroy = signal();
 
     constructor(sessions, storage, identities) {
         this.#sessions = sessions;
@@ -17,7 +19,7 @@ class Sessions {
         this.#identities.onChange(this.#handleIdentitiesChange);
     }
 
-    getById(sessionId) {
+    get(sessionId) {
         if (!this.#sessions[sessionId]) {
             throw new UnknownSessionError(sessionId);
         }
@@ -28,11 +30,25 @@ class Sessions {
     isValid(sessionId) {
         const session = this.#sessions[sessionId];
 
-        return Boolean(session && session.isValid && session.isValid());
+        if (!session) {
+            return false;
+        }
+
+        try {
+            const identity = this.#getIdentity(session.getIdentityId());
+
+            return this.#isIdentityRevoked(identity) && session.isValid();
+        } catch (err) {
+            return false;
+        }
     }
 
     async create(identityId, app, options) {
         const identity = this.#getIdentity(identityId);
+
+        if (this.#isIdentityRevoked(identity)) {
+            throw new CreateSessionRevokedIdentityError(identityId);
+        }
 
         const session = this.#getSessionByIdentityAndAppId(identityId, app.id);
 
@@ -44,11 +60,19 @@ class Sessions {
             await this.destroy(session.getId());
         }
 
-        const newSession = await createSession({ app, options }, identity, this.#storage);
+        const newSession = await createSession({ app, options }, identityId, this.#storage);
+        const newSessionId = newSession.getId();
 
-        this.#addIdentityListeners(identityId);
+        this.#sessions[newSessionId] = newSession;
 
-        this.#sessions[newSession.getId()] = newSession;
+        try {
+            await identity.apps.add(app);
+            await identity.apps.linkCurrentDevice(app.id);
+        } catch (err) {
+            delete this.#sessions[newSessionId];
+
+            throw err;
+        }
 
         return newSession;
     }
@@ -62,23 +86,35 @@ class Sessions {
 
         delete this.#sessions[sessionId];
 
-        this.#removeIdentityListeners(session.getIdentityId());
-
         try {
-            await removeSession(sessionId, this.#identities, this.#storage);
+            const appId = session.getAppId();
+            const identityId = session.getIdentityId();
+
+            if (this.#identities.isLoaded() && this.#identities.has(identityId)) {
+                const identity = this.#identities.get(identityId);
+
+                await identity.apps.unlinkCurrentDevice(appId);
+            }
         } catch (err) {
             this.#sessions[sessionId] = session;
-            this.#addIdentityListeners(session.getIdentityId());
 
             throw err;
         }
+
+        await removeSession(sessionId, this.#storage);
+
+        this.#onDestroy.dispatch(sessionId);
     }
 
-    #getSessionByIdentityAndAppId = (identityId, appId) =>
-        Object.values(this.#sessions).find((session) => session.getAppId() === appId && session.getIdentityId() === identityId);
+    onDestroy(fn) {
+        return this.#onDestroy.add(fn);
+    }
 
-    #getSessionsByIdentityId = (identityId) =>
-        Object.values(this.#sessions).filter((session) => session.getIdentityId() === identityId);
+    #getSessionByIdentityAndAppId = (identityId, appId, sessions = this.#sessions) =>
+        Object.values(sessions).find((session) => session.getAppId() === appId && session.getIdentityId() === identityId);
+
+    #getSessionsByIdentityId = (identityId, sessions = this.#sessions) =>
+        Object.values(sessions).filter((session) => session.getIdentityId() === identityId);
 
     #destroySessionsByIdentityId = async (identityId) => {
         const identitySessions = this.#getSessionsByIdentityId(identityId);
@@ -98,78 +134,110 @@ class Sessions {
         }
     }
 
+    #isIdentityRevoked = (identity) => {
+        const isRevoked = identity.isRevoked();
+
+        if (isRevoked) {
+            this.#destroySessionsByIdentityId(identity.getId());
+        }
+
+        return isRevoked;
+    }
+
     #addIdentityListeners = (identityId) => {
-        const identity = this.#getIdentity(identityId);
-        const listeners = this.#identityListeners.get(identityId);
-
-        if (listeners) {
-            listeners.counter += 1;
-
+        if (this.#identityListeners.has(identityId)) {
             return;
         }
 
-        this.#identityListeners.set(identityId, {
-            counter: 1,
-            removeListener: identity.apps.onLinkCurrentChange((...args) => this.#handleLinkCurrentChange(identityId, ...args)),
-        });
+        const identity = this.#identities.get(identityId);
+
+        const removeRevokeListener = identity.onRevoke((...args) => this.#handleIdentityRevoke(identityId, ...args));
+        const removeLinkChangeListener = identity.apps.onLinkCurrentChange((...args) => this.#handleLinkCurrentChange(identityId, ...args));
+
+        this.#identityListeners.set(identityId, { removeRevokeListener, removeLinkChangeListener });
     }
 
     #removeIdentityListeners = (identityId) => {
-        const listeners = this.#identityListeners.get(identityId);
-
-        if (!listeners) {
+        if (!this.#identityListeners.has(identityId)) {
             return;
         }
 
-        listeners.counter -= 1;
+        const listeners = this.#identityListeners.get(identityId);
 
-        if (listeners.counter === 0) {
-            listeners.removeListener && listeners.removeListener();
+        listeners.removeRevokeListener();
+        listeners.removeLinkChangeListener();
 
-            this.#identityListeners.delete(identityId);
-        }
+        this.#identityListeners.delete(identityId);
     }
 
     #handleIdentitiesLoad = () => {
+        Object.values(this.#identities.list()).forEach((identity) => {
+            const apps = identity.apps.list();
+            const identityId = identity.getId();
+
+            apps.forEach((app) => {
+                const session = this.#getSessionByIdentityAndAppId(identityId, app.id);
+
+                if (!session) {
+                    identity.apps.unlinkCurrentDevice(app.id).catch(() => console.warn(`Something went wrong unlinking current device with app "${app.id}" for identity "${identityId}". Will retry on reload.`));
+                }
+            });
+
+            this.#addIdentityListeners(identity.getId());
+        });
+
         Object.values(this.#sessions).forEach((session) => {
             const sessionId = session.getId();
             const identityId = session.getIdentityId();
 
-            if (!this.#identities.has(identityId)) {
-                this.destroy(sessionId).catch(() => {
-                    delete this.#sessions[sessionId];
-
-                    console.warn(`Something went wrong destroying session "${sessionId}" for unknown identity "${identityId}". Will retry on reload.`);
-                });
-
-                return;
+            if (!this.#identities.has(identityId) || this.#identities.get(identityId).isRevoked()) {
+                this.destroy(sessionId).catch(() => console.warn(`Something went wrong destroying session "${sessionId}" for identity "${identityId}". Will retry on reload.`));
             }
-
-            this.#addIdentityListeners(identityId);
         });
     }
 
     #handleIdentitiesChange = async (identities, operation) => {
-        const { type, id } = operation;
+        const { type, id: identityId } = operation;
 
         if (type !== 'remove') {
+            this.#addIdentityListeners(identityId);
+
             return;
         }
 
-        await this.#destroySessionsByIdentityId(id);
+        try {
+            await this.#destroySessionsByIdentityId(identityId);
+
+            this.#removeIdentityListeners(identityId);
+        } catch (err) {
+            console.warn(`Something went wrong destroying sessions for removed identity "${identityId}". Will retry on reload.`);
+        }
+    }
+
+    #handleIdentityRevoke = async (identityId) => {
+        try {
+            await this.#destroySessionsByIdentityId(identityId);
+        } catch (err) {
+            console.warn(`Something went wrong destroying sessions for revoked identity "${identityId}". Will retry on reload.`);
+        }
     }
 
     #handleLinkCurrentChange = async (identityId, { appId, isLinked }) => {
         const session = this.#getSessionByIdentityAndAppId(identityId, appId);
 
-        if (isLinked || !session) {
-            return;
-        }
+        if (session && !isLinked) {
+            const sessionId = session.getId();
 
-        try {
-            await this.destroy(session.getId());
-        } catch (err) {
-            console.warn(`Something went wrong destroying session after app "${appId}" revocation for identity "${identityId}" in current device`);
+            this.destroy(session.getId()).catch(() => console.warn(`Something went wrong destroying session "${sessionId}" for app "${appId} of identity "${identityId}" . Will retry on reload.`));
+        } else if (!session && isLinked) {
+            const sessions = await loadSessions(this.#storage);
+            const newSession = this.#getSessionByIdentityAndAppId(identityId, appId, sessions);
+
+            if (newSession) {
+                this.#addIdentityListeners(identityId);
+
+                this.#sessions[newSession.getId()] = newSession;
+            }
         }
     }
 }
