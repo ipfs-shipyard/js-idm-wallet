@@ -30,17 +30,7 @@ class Sessions {
     isValid(sessionId) {
         const session = this.#sessions[sessionId];
 
-        if (!session) {
-            return false;
-        }
-
-        try {
-            const identity = this.#getIdentity(session.getIdentityId());
-
-            return this.#isIdentityRevoked(identity) && session.isValid();
-        } catch (err) {
-            return false;
-        }
+        return Boolean(session && session.isValid && session.isValid());
     }
 
     async create(identityId, app, options) {
