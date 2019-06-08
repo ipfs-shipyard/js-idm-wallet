@@ -27,6 +27,10 @@ class Session {
         return this.#descriptor.createAt;
     }
 
+    getMeta() {
+        return this.#descriptor.meta;
+    }
+
     isValid() {
         return this.#descriptor.expiresAt > Date.now();
     }
