@@ -35,6 +35,7 @@
     "build": "npm run build:commonjs && npm run build:es",
     "test": "jest",
     "lint": "eslint .",
+    "postlint": "cd demo && eslint .",
     "prerelease": "npm t && npm run lint && npm run build",
     "release": "standard-version"
   },

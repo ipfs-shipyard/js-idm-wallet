@@ -1,0 +1,5 @@
+{
+    "presets": [
+        ["babel-preset-moxy/end-project", { "react": true }]
+    ]
+}
