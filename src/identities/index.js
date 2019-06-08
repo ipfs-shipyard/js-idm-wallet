@@ -149,8 +149,8 @@ class Identities {
             currentDevice,
         }, this.#storage, this.#didm, this.#ipfs);
 
-        this.#identitiesMap[identity.id] = identity;
-        this.#updateIdentitiesList({ type: 'import', id: identity.id });
+        this.#identitiesMap[identity.getId()] = identity;
+        this.#updateIdentitiesList({ type: 'import', id: identity.getId() });
 
         return identity;
     }

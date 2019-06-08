@@ -1,4 +1,5 @@
 import signal from 'pico-signals';
+import { difference } from 'lodash';
 import { loadStore, dropStore } from './utils/orbitdb';
 import { assertApplication } from './utils/asserts';
 import { UnknownAppError } from '../../utils/errors';
@@ -11,10 +12,10 @@ class Applications {
     #appsStore;
     #appsDevicesStore;
 
-    #currentDeviceAppsList = [];
+    #currentDeviceAppsMap;
+    #currentDeviceAppsList;
 
     #onChange = signal();
-    #onRevoke = signal();
     #onLinkChange = signal();
 
     constructor(currentDeviceId, identityDescriptor, appsStore, appsDevicesStore) {
@@ -24,12 +25,12 @@ class Applications {
         this.#appsStore = appsStore;
         this.#appsDevicesStore = appsDevicesStore;
 
-        this.#appsStore.events.on('write', this.#handleAppsStoreChange);
-        this.#appsStore.events.on('replicated', this.#handleAppsStoreChange);
-        this.#appsDevicesStore.events.on('write', this.#handleAppsDevicesStoreChange);
-        this.#appsDevicesStore.events.on('replicated', this.#handleAppsDevicesStoreChange);
+        this.#appsStore.events.on('write', this.#handleAppsStoreWrite);
+        this.#appsStore.events.on('replicated', this.#handleStoreReplication);
+        this.#appsDevicesStore.events.on('write', this.#handleAppsDevicesStoreWrite);
+        this.#appsDevicesStore.events.on('replicated', this.#handleStoreReplication);
 
-        this.#updateCurrentDeviceAppsList();
+        this.#updateCurrentDeviceApps();
     }
 
     list() {
@@ -79,10 +80,6 @@ class Applications {
         return this.#onChange.add(fn);
     }
 
-    onRevoke(fn) {
-        return this.#onRevoke.add(fn);
-    }
-
     onLinkCurrentChange(fn) {
         return this.#onLinkChange.add(fn);
     }
@@ -95,46 +92,40 @@ class Applications {
         return { appId, deviceId };
     }
 
-    #updateCurrentDeviceAppsList = () => {
-        this.#currentDeviceAppsList = Object.keys(this.#appsDevicesStore.all).reduce((acc, key) => {
+    #updateCurrentDeviceApps = () => {
+        const apps = { ...this.#appsStore.all };
+        const appsDevices = { ...this.#appsDevicesStore.all };
+
+        const currentDeviceAppsMap = Object.keys(appsDevices).reduce((acc, key) => {
             const { appId, deviceId } = this.#parseCurrentDeviceAppKey(key);
-            const app = this.#appsStore.get(appId);
+            const app = apps[appId];
 
             if (app && deviceId === this.#currentDeviceId) {
-                acc.push(app);
+                acc[appId] = app;
             }
 
             return acc;
-        }, []);
-    }
+        }, {});
 
-    #dispatchRevoke = (appId) => {
-        this.#onRevoke.dispatch(appId);
+        this.#currentDeviceAppsMap = currentDeviceAppsMap;
+        this.#currentDeviceAppsList = Object.values(this.#currentDeviceAppsMap);
+
+        this.#onChange.dispatch(this.#currentDeviceAppsList, this.#identityDescriptor.id);
     }
 
     #dispatchLinkCurrentChange = (appId, isLinked) => {
         this.#onLinkChange.dispatch({ appId, deviceId: this.currentDeviceId, isLinked });
     }
 
-    #handleAppsStoreChange = (store, { payload }) => {
-        const { op, key } = payload;
-
-        this.#updateCurrentDeviceAppsList();
-
-        this.#onChange.dispatch(this.#currentDeviceAppsList, this.#identityDescriptor.id);
-
-        if (op === 'DEL') {
-            this.#dispatchRevoke(key);
-        }
+    #handleAppsStoreWrite = () => {
+        this.#updateCurrentDeviceApps();
     }
 
-    #handleAppsDevicesStoreChange = (store, { payload }) => {
+    #handleAppsDevicesStoreWrite = (store, { payload }) => {
         const { op, key } = payload;
         const { appId, deviceId } = this.#parseCurrentDeviceAppKey(key);
 
-        this.#updateCurrentDeviceAppsList();
-
-        this.#onChange.dispatch(this.#currentDeviceAppsList, this.#identityDescriptor.id);
+        this.#updateCurrentDeviceApps();
 
         if (deviceId === this.#currentDeviceId) {
             if (op === 'PUT') {
@@ -143,6 +134,20 @@ class Applications {
                 this.#dispatchLinkCurrentChange(appId, false);
             }
         }
+    }
+
+    #handleStoreReplication = () => {
+        const previousLinkedApps = Object.keys(this.#currentDeviceAppsMap);
+
+        this.#updateCurrentDeviceApps();
+
+        const currentLinkedApps = Object.keys(this.#currentDeviceAppsMap);
+
+        const links = difference(currentLinkedApps, previousLinkedApps);
+        const unlinks = difference(previousLinkedApps, currentLinkedApps);
+
+        links.forEach((appId) => this.#dispatchLinkCurrentChange(appId, true));
+        unlinks.forEach((appId) => this.#dispatchLinkCurrentChange(appId, false));
     }
 }
 
