@@ -5,7 +5,7 @@ import createStorage from './storage';
 import createLocker from './locker';
 import createIdentities from './identities';
 import createSessions from './sessions';
-import { keychainPass } from './utils/constants';
+import { IPFS_KEYCHAIN_PASSWORD } from './utils/constants';
 import { UnavailableIpfsError } from './utils/errors';
 
 const createIpfs = (ipfs) => {
@@ -19,7 +19,7 @@ const createIpfs = (ipfs) => {
 
     return new Promise((resolve, reject) => {
         const node = new Ipfs({
-            pass: keychainPass,
+            pass: IPFS_KEYCHAIN_PASSWORD,
             EXPERIMENTAL: {
                 pubsub: true,
             },
@@ -40,7 +40,10 @@ const createIpfs = (ipfs) => {
 };
 
 const createWallet = async (options) => {
-    options = { ...options };
+    options = {
+        ipfs: undefined,
+        ...options,
+    };
 
     const ipfsNode = await createIpfs(options.ipfs);
 

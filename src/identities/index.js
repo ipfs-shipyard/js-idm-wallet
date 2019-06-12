@@ -1,5 +1,5 @@
 import signal from 'pico-signals';
-import { parseDid } from '../utils/did';
+import { parse as parseDid } from 'did-uri';
 import {
     UnsupportedDidMethodPurposeError,
     IdentitiesNotLoadedError,
@@ -109,6 +109,7 @@ class Identities {
 
         const { did, backupData } = await this.#didm.create(didMethod, params, (document) => {
             document.addPublicKey(didPublicKey);
+            document.addAuthentication(didPublicKey.id);
         });
 
         const identity = await identityFns.createIdentity({
@@ -142,6 +143,7 @@ class Identities {
 
         await this.#didm.update(did, params, (document) => {
             document.addPublicKey(didPublicKey);
+            document.addAuthentication(didPublicKey.id);
         });
 
         const identity = await identityFns.createIdentity({

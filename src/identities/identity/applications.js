@@ -37,6 +37,18 @@ class Applications {
         return this.#currentDeviceAppsList;
     }
 
+    has(appId) {
+        return Boolean(this.#currentDeviceAppsMap[appId]);
+    }
+
+    get(appId) {
+        if (!this.#currentDeviceAppsMap[appId]) {
+            throw new UnknownAppError(appId);
+        }
+
+        return this.#currentDeviceAppsMap[appId];
+    }
+
     async add(app) {
         assertApplication(app);
 

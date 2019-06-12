@@ -1,1 +1,1 @@
-export const keychainPass = 'K52XQ7K0FPR1DF01RM0L';
+export const IPFS_KEYCHAIN_PASSWORD = 'K52XQ7K0FPR1DF01RM0L';

@@ -11,7 +11,7 @@ class LockScreen extends Component {
 
     render() {
         const { loading, error } = this.state;
-    
+
         if (loading) {
             return <div>...Loading...</div>;
         }

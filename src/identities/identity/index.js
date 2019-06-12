@@ -1,9 +1,11 @@
 import pReduce from 'p-reduce';
 import signal from 'pico-signals';
-import { sha256 } from '../../utils/sha';
+import { createSigner } from 'idm-signatures';
+import { format as formatDid } from 'did-uri';
 import { UnableCreateIdentityError } from '../../utils/errors';
 import { getDescriptorKey, DESCRIPTOR_KEY_PREFIX } from './utils/storage-keys';
 import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb';
+import { hashSha256 } from '../../utils/crypto';
 import * as devicesFns from './devices';
 import * as backupFns from './backup';
 import * as profileFns from './profile';
@@ -13,29 +15,44 @@ class Identity {
     #descriptor;
     #storage;
     #orbitdb;
+    #devices;
+    #backup;
+    #profile;
+    #apps;
 
-    backup;
-    devices;
-    profile;
-    apps;
-
+    #signer;
     #onRevoke = signal();
 
     constructor(descriptor, storage, orbitdb, devices, backup, profile, apps) {
         this.#descriptor = descriptor;
         this.#storage = storage;
         this.#orbitdb = orbitdb;
+        this.#backup = backup;
+        this.#devices = devices;
+        this.#profile = profile;
+        this.#apps = apps;
 
-        this.backup = backup;
-        this.devices = devices;
-        this.profile = profile;
-        this.apps = apps;
+        this.#devices.onCurrentRevoke(this.#handleDevicesCurrentRevoke);
 
-        this.devices.onCurrentRevoke(this.#handleDevicesCurrentRevoke);
-
-        if (this.devices.getCurrent().revokedAt && !this.isRevoked()) {
+        if (this.#devices.getCurrent().revokedAt && !this.isRevoked()) {
             setTimeout(this.#handleDevicesCurrentRevoke, 10);
         }
+    }
+
+    get backup() {
+        return this.#backup;
+    }
+
+    get devices() {
+        return this.#devices;
+    }
+
+    get profile() {
+        return this.#profile;
+    }
+
+    get apps() {
+        return this.#apps;
     }
 
     getId() {
@@ -56,6 +73,21 @@ class Identity {
 
     onRevoke(fn) {
         return this.#onRevoke.add(fn);
+    }
+
+    getSigner() {
+        if (!this.#signer) {
+            this.#signer = this.#createSigner();
+        }
+
+        return this.#signer;
+    }
+
+    #createSigner = () => {
+        const { didPublicKeyId, keyMaterial } = this.#devices.getCurrent();
+        const didUrl = formatDid({ did: this.getDid(), fragment: didPublicKeyId });
+
+        return createSigner(didUrl, keyMaterial.privateKeyPem);
     }
 
     #handleDevicesCurrentRevoke = async () => {
@@ -81,7 +113,7 @@ class Identity {
 }
 
 export const peekProfileDetails = async (did, ipfs) => {
-    const id = await sha256(did);
+    const id = await hashSha256(did, true);
     const descriptor = {
         id,
         did,
@@ -95,7 +127,7 @@ export const peekProfileDetails = async (did, ipfs) => {
 };
 
 export const createIdentity = async ({ did, currentDevice, backupData, profileDetails }, storage, didm, ipfs) => {
-    const id = await sha256(did);
+    const id = await hashSha256(did, true);
     const descriptor = {
         id,
         did,

@@ -4,7 +4,7 @@ export const scrypt = {
     passphraseKey: new Uint8Array([193, 234, 133, 113, 35, 196, 183, 1, 141, 26, 145, 163, 132, 157, 67, 82, 244, 214, 37, 6, 145, 106, 130, 7, 175, 112, 56, 3, 137, 176, 62, 34]),
 };
 
-export const cryptoEncryptResultHex = 'D67B84C15970607335EBA44474AC97F27A2366AB861E6550529333CFE5B788999DC26738C2C539E7093A7C4063B80703';
+export const cryptoEncryptResultHex = 'd67b84c15970607335eba44474ac97f27a2366ab861e6550529333cfe5b788999dc26738c2c539e7093a7c4063b80703';
 
 export const crypto = {
     getRandomValues: (value) => {
@@ -16,19 +16,19 @@ export const crypto = {
 };
 
 export const storedPassphrase = {
-    derivedKey: {
+    keyDerivation: {
         algorithm: 'scrypt',
         params: {
             N: 32768,
             p: 1,
             r: 8,
         },
-        salt: 'F7EA91EE841EAABB5D8FBE2DBC9FE970',
+        salt: 'f7ea91ee841eaabb5d8fbe2dbc9fe970',
     },
     encryptedSecret: {
         algorithm: 'AES-GCM',
         cypherText: cryptoEncryptResultHex,
-        iv: 'F7EA91EE841EAABB5D8FBE2D',
+        iv: 'f7ea91ee841eaabb5d8fbe2d',
     },
 };
 

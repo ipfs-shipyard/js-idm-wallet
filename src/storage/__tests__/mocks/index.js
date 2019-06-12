@@ -5,19 +5,15 @@ export const mockSecret = {
     getAsync: jest.fn(async () => mockSecretValue),
 };
 
-export const mockEncryptCypherTextHex = '0129888B73D6C82F23EC79612C4D97A2A591BC9094DF83319C212CF324';
+export const mockEncryptCypherTextHex = '0129888b73d6c82f23ec79612c4d97a2a591bc9094df83319c212cf324';
 
-export const mockEncryptCypherTextBytes = new Uint8Array([1, 41, 136, 139, 115, 214, 200, 47, 35, 236, 121, 97, 44, 77, 151, 162, 165, 145, 188, 144, 148, 223, 131, 49, 156, 33, 44, 243, 36]);
-
-export const mockEncryptCypherIvHex = '0E2AB41E97025002314D5814';
-
-export const mockEncryptCypherIvBytes = new Uint8Array([14, 42, 180, 30, 151, 2, 80, 2, 49, 77, 88, 20]);
+export const mockEncryptCypherIvHex = '0e2ab41e97025002314d5814';
 
 export const mockEncryptedDataBytes = new Uint8Array([123, 34, 102, 111, 111, 34, 58, 34, 98, 97, 114, 34, 125]);
 
 export const mockEncryptedDataStringified = `{"algorithm":"AES-GCM","iv":"${mockEncryptCypherIvHex}","cypherText":"${mockEncryptCypherTextHex}"}`;
 
-export const mockEncryptedData = { algorithm: 'AES-GCM', iv: mockEncryptCypherIvBytes, cypherText: mockEncryptCypherTextBytes };
+export const mockEncryptedData = { algorithm: 'AES-GCM', iv: mockEncryptCypherIvHex, cypherText: mockEncryptCypherTextHex };
 
 export const mockData = '{"foo":"bar"}';
 
@@ -58,7 +54,7 @@ export class MockReadStream {
     };
 }
 
-export const mockGet = jest.fn(async (key) => `"${key}-value"`);
+export const mockGet = jest.fn(async (key) => JSON.stringify(`${key}-value`));
 
 export const mockPut = jest.fn(async () => {});
 
@@ -67,8 +63,8 @@ export const mockDel = jest.fn(async () => {});
 export const mockBatch = jest.fn(async () => {});
 
 export const mockCreateReadStream = jest.fn((options) => new MockReadStream([
-    { key: 1, value: '123' },
-    { key: 2, value: '{"a":1}' },
+    { key: 1, value: JSON.stringify(123) },
+    { key: 2, value: JSON.stringify({ a: 1 }) },
 ], options));
 
 export const mockLevelApi = {
@@ -89,9 +85,10 @@ export const mockEncrypt = jest.fn(async () => mockEncryptedData);
 
 export const mockDecrypt = jest.fn(async () => mockEncryptedDataBytes);
 
-export const mockCreateAesGcm = (api) => ({
+export const mockCrypto = (api) => ({
     encrypt: mockEncrypt,
     decrypt: mockDecrypt,
+    isEncrypted: (data) => Boolean(data.algorithm),
     ...api,
 });
 

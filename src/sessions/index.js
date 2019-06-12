@@ -1,5 +1,5 @@
 import signal from 'pico-signals';
-import { loadSessions, createSession, removeSession } from './session';
+import { loadSessions, createSession, removeSession, assertSessionOptions } from './session';
 import { UnknownSessionError, UnknownIdentityError, CreateSessionRevokedIdentityError } from '../utils/errors';
 
 class Sessions {
@@ -34,6 +34,8 @@ class Sessions {
     }
 
     async create(identityId, app, options) {
+        assertSessionOptions();
+
         const identity = this.#getIdentity(identityId);
 
         if (this.#isIdentityRevoked(identity)) {
@@ -50,7 +52,7 @@ class Sessions {
             await this.destroy(session.getId());
         }
 
-        const newSession = await createSession({ app, options }, identityId, this.#storage);
+        const newSession = await createSession(identity, app, options, this.#storage, this.#identities);
         const newSessionId = newSession.getId();
 
         this.#sessions[newSessionId] = newSession;

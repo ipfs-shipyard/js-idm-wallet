@@ -9,7 +9,6 @@ class Backup {
     #onComplete = signal();
 
     constructor(data, identityDescriptor, storage) {
-        window.backup = this;
         this.#data = data;
         this.#identityDescriptor = identityDescriptor;
         this.#storage = storage;

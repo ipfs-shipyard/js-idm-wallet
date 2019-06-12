@@ -1,5 +1,5 @@
+import { parse as parseDid } from 'did-uri';
 import createIpid from './methods/ipid';
-import { parseDid } from '../utils/did';
 import { UnsupportedDidMethodError, UnsupportedDidMethodPurposeError } from '../utils/errors';
 
 class Didm {

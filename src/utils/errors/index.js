@@ -5,10 +5,11 @@ export * from './identities';
 export * from './locker';
 export * from './storage';
 export * from './sessions';
+export * from './crypto';
 
 export class UnavailableIpfsError extends BaseError {
     constructor() {
-        super('IPFS node is unavailable.', 'IPFS_UNAVAILABLE');
+        super('IPFS node is unavailable', 'IPFS_UNAVAILABLE');
     }
 }
 

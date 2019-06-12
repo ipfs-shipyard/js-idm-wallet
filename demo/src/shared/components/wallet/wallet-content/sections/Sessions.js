@@ -91,7 +91,11 @@ class Sessions extends Component {
                     id: session.getId(),
                     appId: session.getAppId(),
                     identityId: session.getIdentityId(),
-                    createAt: session.getCreatedAt(),
+                    identityDid: session.getIdentityDid(),
+                    didPublicKeyId: session.getDidPublicKeyId(),
+                    keyMaterial: session.getKeyMaterial(),
+                    meta: session.getMeta(),
+                    createdAt: session.getCreatedAt(),
                 });
             })
             .catch(console.error);

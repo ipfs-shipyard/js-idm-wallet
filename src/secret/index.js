@@ -1,8 +1,7 @@
 import signal from 'pico-signals';
 import pDefer from 'p-defer';
+import { generateCypherKey } from '../utils/crypto';
 import { LockerLockedError } from '../utils/errors';
-
-const SECRET_LENGTH = 32;
 
 class Secret {
     #secret;
@@ -51,7 +50,7 @@ class Secret {
     }
 
     generate() {
-        this.set(crypto.getRandomValues(new Uint8Array(SECRET_LENGTH)));
+        this.set(generateCypherKey());
     }
 
     onDefinedChange(fn) {

@@ -2,8 +2,9 @@ import scrypt from 'scrypt-async';
 import hexarray from 'hex-array';
 import pify from 'pify';
 import signal from 'pico-signals';
-import checkPassphraseStrength from './util/passphrase-strength';
-import { assertDisabled, assertEnabled, assertNotMaster } from './util/asserts';
+import checkPassphraseStrength from './utils/passphrase-strength';
+import { assertDisabled, assertEnabled, assertNotMaster } from './utils/asserts';
+import { encrypt, decrypt, getRandomBytes } from '../../utils/crypto';
 import { LockValidationError, UnlockMismatchError } from '../../utils/errors';
 
 const pScrypt = pify(scrypt, { errorFirst: false });
@@ -82,28 +83,17 @@ class PassphraseLock {
         assertEnabled(this.#enabled);
 
         // Read the previous saved stuff from the storage
-        let { derivedKey, encryptedSecret } = await this.#storage.get(STORAGE_KEY);
-
-        derivedKey = {
-            ...derivedKey,
-            salt: hexarray.fromString(derivedKey.salt),
-        };
-
-        encryptedSecret = {
-            ...encryptedSecret,
-            iv: hexarray.fromString(encryptedSecret.iv),
-            cypherText: hexarray.fromString(encryptedSecret.cypherText),
-        };
+        const { keyDerivation, encryptedSecret } = await this.#storage.get(STORAGE_KEY);
 
         // Re-derive the key from the passphrase with the same salt and params
         // Then, decrypt the locker secret with that derived key using AES-GCM
         // Because AES-GCM is authenticated, it will fail if the key is wrong (invalid passphrase)
-        const key = await this.#rederiveKey(input, derivedKey.params, derivedKey.salt);
+        const key = await this.#rederiveKey(input, keyDerivation);
 
         let secret;
 
         try {
-            secret = await this.#decryptSecret(encryptedSecret.cypherText, encryptedSecret.iv, key);
+            secret = await decrypt(encryptedSecret, key);
         } catch (err) {
             throw new UnlockMismatchError('Passphrase is invalid');
         }
@@ -116,32 +106,23 @@ class PassphraseLock {
 
         // Derive a 256-bit key from the passphrase which will be used as the encryption key
         // Then, encrypt the locker secret with that derived key using AES-GCM
-        const { key, salt, params } = await this.#deriveKey(passphrase);
-        const { iv, cypherText } = await this.#encryptSecret(secret, key);
+        const { key, keyDerivation } = await this.#deriveKey(passphrase);
+        const encryptedSecret = await encrypt(secret, key, true);
 
         // Finally store everything that we need to validate the passphrase in the future
         await this.#storage.set(STORAGE_KEY, {
-            derivedKey: {
-                algorithm: 'scrypt',
-                params,
-                salt: hexarray.toString(salt),
-            },
-            encryptedSecret: {
-                algorithm: 'AES-GCM',
-                iv: hexarray.toString(iv),
-                cypherText: hexarray.toString(cypherText),
-            },
+            keyDerivation,
+            encryptedSecret,
         });
     }
 
     #deriveKey = async (passphrase) => {
         // Salt defaults to 128 bits which is more than enough
-        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const salt = getRandomBytes(128 / 8);
 
         // Params recommended for interactive logins in 2017
         const params = { N: 32768, r: 8, p: 1 };
 
-        // Convert the passphrase to bytes
         const password = new TextEncoder().encode(passphrase);
 
         const key = await pScrypt(password, salt, {
@@ -152,50 +133,25 @@ class PassphraseLock {
 
         return {
             key,
-            salt,
-            params,
+            keyDerivation: {
+                algorithm: 'scrypt',
+                salt: hexarray.toString(salt, { uppercase: false }),
+                params,
+            },
         };
     }
 
-    #rederiveKey = async (passphrase, params, salt) => {
-        // Convert the passphrase to bytes
+    #rederiveKey = async (passphrase, keyDerivation) => {
+        const salt = hexarray.fromString(keyDerivation.salt);
+
         const password = new TextEncoder().encode(passphrase);
 
         const key = await pScrypt(password, salt, {
-            ...params,
+            ...keyDerivation.params,
             encoding: 'binary',
         });
 
         return key;
-    }
-
-    #encryptSecret = async (secret, key) => {
-        const algorithm = {
-            name: 'AES-GCM',
-            // As per the AES publication, IV should be 12 bytes for GCM
-            // See https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf, page 15
-            iv: crypto.getRandomValues(new Uint8Array(12)),
-        };
-
-        const cryptoKey = await crypto.subtle.importKey('raw', key, algorithm.name, false, ['encrypt']);
-        const cypherText = await crypto.subtle.encrypt(algorithm, cryptoKey, secret);
-
-        return {
-            iv: algorithm.iv,
-            cypherText: new Uint8Array(cypherText),
-        };
-    }
-
-    #decryptSecret = async (cypherText, iv, key) => {
-        const algorithm = {
-            name: 'AES-GCM',
-            iv,
-        };
-
-        const cryptoKey = await crypto.subtle.importKey('raw', key, algorithm.name, false, ['decrypt']);
-        const secret = await crypto.subtle.decrypt(algorithm, cryptoKey, cypherText);
-
-        return new Uint8Array(secret);
     }
 
     #dispatchEnabledChange = (enabled) => {

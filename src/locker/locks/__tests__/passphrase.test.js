@@ -170,7 +170,7 @@ describe('unlock', () => {
     });
 
     it('should fail if no derived key stored', async () => {
-        const mockStorage = { has: () => true, get: jest.fn(() => ({ ...storedPassphrase, derivedKey: undefined })) };
+        const mockStorage = { has: () => true, get: jest.fn(() => ({ ...storedPassphrase, keyDerivation: undefined })) };
         const lock = await createPassphraseLock(mockStorage, mockSecret);
 
         await expect(lock.unlock('walletPassphrase')).rejects.toThrow();
