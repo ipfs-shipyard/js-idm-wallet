@@ -3,7 +3,7 @@ import level from 'level';
 import createStorage from '../index';
 
 jest.mock('level', () => mocks.mockCreateLevel());
-jest.mock('../../utils/aes-gcm', () => mocks.mockCreateAesGcm());
+jest.mock('../../utils/crypto', () => mocks.mockCrypto());
 
 beforeEach(() => {
     jest.clearAllMocks();
@@ -45,7 +45,7 @@ describe('get', () => {
 
         expect(mocks.mockSecret.getAsync).toHaveBeenCalledTimes(1);
         expect(mocks.mockDecrypt).toHaveBeenCalledTimes(1);
-        expect(mocks.mockDecrypt).toHaveBeenCalledWith(mocks.mockEncryptCypherTextBytes, mocks.mockEncryptCypherIvBytes, mocks.mockSecretValue);
+        expect(mocks.mockDecrypt).toHaveBeenCalledWith({ algorithm: 'AES-GCM', cypherText: mocks.mockEncryptCypherTextHex, iv: mocks.mockEncryptCypherIvHex }, mocks.mockSecretValue);
         expect(mocks.mockDecode).toHaveBeenCalledTimes(1);
         expect(mocks.mockDecode).toHaveBeenCalledWith(mocks.mockEncryptedDataBytes);
     });
@@ -113,7 +113,7 @@ describe('set', () => {
     it('should set key value pair successfully', async () => {
         const storage = await createStorage();
 
-        await expect(storage.set('foo', 'bar')).resolves.toEqual({ key: 'foo', value: '"bar"' });
+        await storage.set('foo', 'bar');
 
         expect(mocks.mockPut).toHaveBeenCalledTimes(1);
         expect(mocks.mockPut).toHaveBeenCalledWith('foo', '"bar"');
@@ -124,17 +124,13 @@ describe('set', () => {
         mocks.mockTextEncoder();
 
         const storage = await createStorage(mocks.mockSecret);
-        const expected = {
-            key: 'foo',
-            value: mocks.mockEncryptedDataStringified,
-        };
 
-        await expect(storage.set('foo', { foo: 'bar' }, { encrypt: true })).resolves.toEqual(expected);
+        await storage.set('foo', { foo: 'bar' }, { encrypt: true });
 
         expect(mocks.mockPut).toHaveBeenCalledTimes(1);
         expect(mocks.mockPut).toHaveBeenCalledWith('foo', mocks.mockEncryptedDataStringified);
         expect(mocks.mockEncrypt).toHaveBeenCalledTimes(1);
-        expect(mocks.mockEncrypt).toHaveBeenCalledWith(mocks.mockEncryptedDataBytes, mocks.mockSecretValue);
+        expect(mocks.mockEncrypt).toHaveBeenCalledWith(mocks.mockEncryptedDataBytes, mocks.mockSecretValue, true);
         expect(mocks.mockEncode).toHaveBeenCalledTimes(1);
         expect(mocks.mockEncode).toHaveBeenCalledWith(mocks.mockData);
     });

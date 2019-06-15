@@ -6,7 +6,7 @@ const TIME_BASE = 60 * 1000;
 class SetupIdleTimer extends Component {
     state = {
         loading: false,
-    }
+    };
 
     render() {
         const { loading } = this.state;
@@ -19,7 +19,7 @@ class SetupIdleTimer extends Component {
             <div>
                 <h3>Setup an expiration lock in minutes</h3>
                 <input
-                    type="number" 
+                    type="number"
                     id="expirationTime"
                     name="expirationTime"
                     onChange={ this.handleInputChange }
@@ -27,6 +27,14 @@ class SetupIdleTimer extends Component {
             </div>
         );
     }
+
+    setMaxTime = (value) => {
+        const { locker, onComplete } = this.props;
+
+        locker.idleTimer.setMaxTime(value)
+        .then(onComplete)
+        .catch((error) => this.setState({ loading: false, error }));
+    };
 
     handleInputChange = (event) => {
         this.inputValue = event.target.value;
@@ -37,14 +45,6 @@ class SetupIdleTimer extends Component {
             this.setMaxTime(Math.abs(this.inputValue * TIME_BASE));
         }
     };
-
-    setMaxTime = (value) => {
-        const { locker, onComplete } = this.props;
-
-        locker.idleTimer.setMaxTime(value)
-            .then(onComplete)
-            .catch((error) => this.setState({ loading: false, error }));
-    }
 }
 
 SetupIdleTimer.propTypes = {

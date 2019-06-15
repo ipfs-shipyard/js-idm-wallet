@@ -1,25 +1,38 @@
-import { InvalidDidError } from './errors';
+import didUri from 'did-uri';
+import { InvalidDidError, InvalidDidUrlError, InvalidDidParts } from './errors/did';
 
 export const parseDid = (did) => {
-    let match;
+    let parsed;
 
-    if (typeof did === 'string') {
-        match = did.match(/did:(\w+):(\w+).*?(?:#(.*))?/);
+    try {
+        parsed = didUri.parse(did);
+    } catch (err) {
+        throw new InvalidDidError(err.message);
     }
 
-    if (!match) {
-        throw new InvalidDidError(did);
+    if (parsed.did !== did) {
+        throw new InvalidDidError(`It seems that ${did} is a DID URL and not a DID`);
     }
 
-    return { method: match[1], identifier: match[2], fragment: match[3] };
+    return parsed;
 };
 
-export const isDidValid = (did) => {
-    try {
-        parseDid(did);
+export const parseDidUrl = (did) => {
+    let parsed;
 
-        return true;
+    try {
+        parsed = didUri.parse(did);
     } catch (err) {
-        return false;
+        throw new InvalidDidUrlError(err.message);
+    }
+
+    return parsed;
+};
+
+export const formatDid = (parts) => {
+    try {
+        return didUri.format(parts);
+    } catch (err) {
+        throw new InvalidDidParts(err.message);
     }
 };

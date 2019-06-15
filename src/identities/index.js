@@ -17,6 +17,7 @@ class Identities {
     #identitiesMap;
     #identitiesLoad;
     #onChange = signal();
+    #onLoad = signal();
 
     constructor(storage, didm, ipfs) {
         this.#storage = storage;
@@ -29,8 +30,12 @@ class Identities {
     }
 
     async load() {
+        let cleanLoad = false;
+
         if (!this.#identitiesLoad) {
             this.#identitiesLoad = identityFns.loadIdentities(this.#storage, this.#didm, this.#ipfs);
+
+            cleanLoad = !this.isLoaded();
         }
 
         try {
@@ -41,6 +46,10 @@ class Identities {
         }
 
         this.#buildIdentitiesList();
+
+        if (cleanLoad) {
+            this.#onLoad.dispatch(this.#identitiesList);
+        }
 
         return this.#identitiesList;
     }
@@ -100,6 +109,7 @@ class Identities {
 
         const { did, backupData } = await this.#didm.create(didMethod, params, (document) => {
             document.addPublicKey(didPublicKey);
+            document.addAuthentication(didPublicKey.id);
         });
 
         const identity = await identityFns.createIdentity({
@@ -110,7 +120,7 @@ class Identities {
         }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.getId()] = identity;
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'create', id: identity.getId() });
 
         return identity;
     }
@@ -133,6 +143,7 @@ class Identities {
 
         await this.#didm.update(did, params, (document) => {
             document.addPublicKey(didPublicKey);
+            document.addAuthentication(didPublicKey.id);
         });
 
         const identity = await identityFns.createIdentity({
@@ -141,7 +152,7 @@ class Identities {
         }, this.#storage, this.#didm, this.#ipfs);
 
         this.#identitiesMap[identity.getId()] = identity;
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'import', id: identity.getId() });
 
         return identity;
     }
@@ -158,18 +169,22 @@ class Identities {
             this.#assertDidmSupport(didMethod, 'update');
 
             await this.#didm.update(did, params, (document) => {
-                document.revokePublicKey(identity.devices.getCurrent().id);
+                document.revokePublicKey(identity.devices.getCurrent().didPublicKeyId);
             });
         }
 
         await identityFns.removeIdentity(id, this.#storage, this.#ipfs);
 
         delete this.#identitiesMap[id];
-        this.#updateIdentitiesList();
+        this.#updateIdentitiesList({ type: 'remove', id });
     }
 
     onChange(fn) {
         return this.#onChange.add(fn);
+    }
+
+    onLoad(fn) {
+        return this.#onLoad.add(fn);
     }
 
     #getIdentityByDid = (did) =>
@@ -188,12 +203,14 @@ class Identities {
         this.#identitiesList.sort((identity1, identity2) => identity1.getAddedAt() - identity2.getAddedAt());
     }
 
-    #updateIdentitiesList = () => {
+    #updateIdentitiesList = (operation) => {
         this.#buildIdentitiesList();
-        this.#onChange.dispatch(this.#identitiesList);
+        this.#onChange.dispatch(this.#identitiesList, operation);
     }
 }
 
 const createIdentities = (storage, didm, ipfs) => new Identities(storage, didm, ipfs);
 
 export default createIdentities;
+
+export { assertApp } from './identity';

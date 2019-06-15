@@ -1,10 +1,11 @@
 import Ipfs from 'ipfs';
 import createSecret from './secret';
+import createDidm from './didm';
 import createStorage from './storage';
 import createLocker from './locker';
 import createIdentities from './identities';
-import createDidm from './didm';
-import { keychainPass } from './utils/constants';
+import createSessions from './sessions';
+import { IPFS_KEYCHAIN_PASSWORD } from './utils/constants';
 import { UnavailableIpfsError } from './utils/errors';
 
 const createIpfs = (ipfs) => {
@@ -18,7 +19,7 @@ const createIpfs = (ipfs) => {
 
     return new Promise((resolve, reject) => {
         const node = new Ipfs({
-            pass: keychainPass,
+            pass: IPFS_KEYCHAIN_PASSWORD,
             EXPERIMENTAL: {
                 pubsub: true,
             },
@@ -39,7 +40,10 @@ const createIpfs = (ipfs) => {
 };
 
 const createWallet = async (options) => {
-    options = { ...options };
+    options = {
+        ipfs: undefined,
+        ...options,
+    };
 
     const ipfsNode = await createIpfs(options.ipfs);
 
@@ -49,12 +53,14 @@ const createWallet = async (options) => {
     const storage = await createStorage(secret);
     const locker = await createLocker(storage, secret);
     const identities = createIdentities(storage, didm, ipfsNode);
+    const sessions = await createSessions(storage, identities);
 
     const idmWallet = {
         didm,
         storage,
         locker,
         identities,
+        sessions,
     };
 
     // Expose a global for the idm wallet for debug purposes only in DEV

@@ -69,7 +69,7 @@ describe('resolve', () => {
         try {
             await did.resolve('did#abcdef');
         } catch (err) {
-            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.message).toMatch(/invalid/i);
             expect(err.code).toBe('INVALID_DID');
         }
     });
@@ -170,7 +170,7 @@ describe('update', () => {
         try {
             await did.update('did#abcdef');
         } catch (err) {
-            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.message).toMatch(/invalid/i);
             expect(err.code).toBe('INVALID_DID');
         }
     });
@@ -226,7 +226,7 @@ describe('isPublicKeyValid', () => {
         try {
             await did.isPublicKeyValid('did#abcdef');
         } catch (err) {
-            expect(err.message).toBe('Invalid DID: did#abcdef');
+            expect(err.message).toMatch(/invalid/i);
             expect(err.code).toBe('INVALID_DID');
         }
     });

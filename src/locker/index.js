@@ -4,35 +4,41 @@ import createIdleTimer from './idle-timer';
 import { PristineError, UnknownLockTypeError } from '../utils/errors';
 
 class Locker {
-    #locks;
-    #secret;
     #storage;
+    #secret;
+    #locks;
+    #masterLock;
+    #idleTimer;
+
     #pristine;
-    #masterLockType;
-
     #onLockedChange = signal();
-
-    idleTimer;
-    masterLock;
 
     constructor(storage, secret, locks, masterLock, idleTimer) {
         this.#storage = storage;
         this.#secret = secret;
         this.#locks = locks;
-        this.masterLock = masterLock;
-        this.idleTimer = idleTimer;
+        this.#masterLock = masterLock;
+        this.#idleTimer = idleTimer;
 
-        this.#pristine = !this.masterLock.isEnabled();
+        this.#pristine = !this.#masterLock.isEnabled();
 
         if (!this.#pristine) {
-            this.idleTimer.restart();
+            this.#idleTimer.restart();
         } else {
             this.#secret.generate();
         }
 
-        this.idleTimer.onTimeout(this.#handleIdleTimerTimeout);
-        this.masterLock.onEnabledChange(this.#handleMasterLockEnabledChange);
+        this.#idleTimer.onTimeout(this.#handleIdleTimerTimeout);
+        this.#masterLock.onEnabledChange(this.#handleMasterLockEnabledChange);
         this.#secret.onDefinedChange(this.#handleSecretDefinedChange);
+    }
+
+    get idleTimer() {
+        return this.#idleTimer;
+    }
+
+    get masterLock() {
+        return this.#masterLock;
     }
 
     isPristine() {
@@ -45,6 +51,10 @@ class Locker {
 
     getSecret() {
         return this.#secret.get();
+    }
+
+    listLockTypes() {
+        return Object.keys(this.#locks);
     }
 
     getLock(type) {
@@ -79,7 +89,7 @@ class Locker {
         const locked = this.isLocked();
 
         if (!locked) {
-            this.idleTimer.restart();
+            this.#idleTimer.restart();
         }
 
         this.#onLockedChange.dispatch(locked);
@@ -89,7 +99,7 @@ class Locker {
         this.#pristine = !enabled;
 
         if (enabled) {
-            this.idleTimer.restart();
+            this.#idleTimer.restart();
         }
     }
 }

@@ -1,8 +1,7 @@
 import level from 'level';
 import pify from 'pify';
 import pMap from 'p-map';
-import hexarray from 'hex-array';
-import { encrypt, decrypt } from '../utils/aes-gcm';
+import { encrypt, decrypt, isEncrypted } from '../utils/crypto';
 import { StorageError } from '../utils/errors';
 
 const createLevelDb = pify(level);
@@ -37,9 +36,9 @@ class Storage {
         try {
             let value = await this.#db.get(key);
 
-            value = JSON.parse(value);
+            value = await this.#maybeDecrypt(value);
 
-            return this.#maybeDecrypt(value);
+            return JSON.parse(value);
         } catch (err) {
             if (err.type === 'NotFoundError') {
                 return undefined;
@@ -53,17 +52,15 @@ class Storage {
         const { encrypt } = { ...options };
 
         try {
+            value = JSON.stringify(value);
+
             if (encrypt) {
                 const secret = await this.#secret.getAsync();
 
                 value = await this.#encrypt(value, secret);
             }
 
-            value = JSON.stringify(value);
-
             await this.#db.put(key, value);
-
-            return { key, value };
         } catch (err) {
             throw new StorageError(err.message, 'set', err.type);
         }
@@ -90,17 +87,7 @@ class Storage {
 
     async list(options) {
         try {
-            let result = await this.#readStream(options);
-
-            result = await pMap(result, async (data) => {
-                if (data.value) {
-                    data.value = await this.#maybeDecrypt(data.value);
-                } else {
-                    data = await this.#maybeDecrypt(data);
-                }
-
-                return data;
-            });
+            const result = await this.#readStream(options);
 
             return result;
         } catch (err) {
@@ -108,67 +95,64 @@ class Storage {
         }
     }
 
-    #readStream = (options) => new Promise((resolve, reject) => {
-        const result = [];
-
+    #readStream = async (options) => {
         options = {
             keys: true,
             values: true,
             ...options,
         };
 
-        this.#db.createReadStream(options)
-        .on('data', (data) => {
+        const result = await new Promise((resolve, reject) => {
+            const result = [];
+
+            this.#db.createReadStream(options)
+            .on('data', (data) => result.push(data))
+            .on('end', () => resolve(result))
+            .on('error', reject);
+        });
+
+        const finalResult = await pMap(result, async (data) => {
             if (options.values) {
                 if (options.keys) {
+                    data.value = await this.#maybeDecrypt(data.value);
                     data.value = JSON.parse(data.value);
                 } else {
+                    data = await this.#maybeDecrypt(data);
                     data = JSON.parse(data);
                 }
             }
 
-            result.push(data);
-        })
-        .on('end', () => resolve(result))
-        .on('error', reject);
-    });
+            return data;
+        });
 
-    #isEncrypted = (value) =>
-        !!(typeof value === 'object' && value.iv && value.cypherText);
-
-    #encrypt = async (value, key) => {
-        value = typeof value === 'string' ? value : JSON.stringify(value);
-        value = new TextEncoder().encode(value);
-
-        const { iv, cypherText, ...rest } = await encrypt(value, key);
-
-        return {
-            ...rest,
-            iv: hexarray.toString(iv),
-            cypherText: hexarray.toString(cypherText),
-        };
+        return finalResult;
     };
 
-    #decrypt = async (cypherText, iv, key) => {
-        cypherText = hexarray.fromString(cypherText);
-        iv = hexarray.fromString(iv);
+    #encrypt = async (value, key) => {
+        const valueUint8Array = new TextEncoder().encode(value);
+        const encryptedValue = await encrypt(valueUint8Array, key, true);
 
-        const decryptedValue = await decrypt(cypherText, iv, key);
-        const decodedValue = new TextDecoder().decode(decryptedValue);
+        return JSON.stringify(encryptedValue);
+    };
 
-        return decodedValue;
+    #decrypt = async (encryptedValue, key) => {
+        const decryptedValueUint8Array = await decrypt(encryptedValue, key);
+        const decryptedValue = new TextDecoder().decode(decryptedValueUint8Array);
+
+        return decryptedValue;
     };
 
     #maybeDecrypt = async (value) => {
-        if (!this.#isEncrypted(value)) {
+        const decodedValue = JSON.parse(value);
+
+        if (!isEncrypted(decodedValue)) {
             return value;
         }
 
         const secret = await this.#secret.getAsync();
+        const decryptedValue = await this.#decrypt(decodedValue, secret);
 
-        value = await this.#decrypt(value.cypherText, value.iv, secret);
-
-        return JSON.parse(value);
+        return decryptedValue;
     }
 }
 
