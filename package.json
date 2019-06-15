@@ -71,7 +71,8 @@
       "/demo/",
       "/lib/",
       "/es/",
-      "/node_modules/"
+      "/node_modules/",
+      "sessions"
     ]
   },
   "devDependencies": {
