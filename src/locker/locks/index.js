@@ -1,12 +1,15 @@
-import pProps from 'p-props';
 import createPassphrase from './passphrase';
 
-const createLocks = async (storage, secret, masterLockType = 'passphrase') => {
-    const passphrase = createPassphrase(storage, secret, masterLockType === 'passphrase');
+const createLocks = async (storage, secret, masterLockType) => {
+    const locks = await Promise.all([
+        createPassphrase(storage, secret, masterLockType),
+    ]);
 
-    return pProps({
-        passphrase,
-    });
+    return locks.reduce((acc, lock) => {
+        acc[lock.getType()] = lock;
+
+        return acc;
+    }, {});
 };
 
 export default createLocks;

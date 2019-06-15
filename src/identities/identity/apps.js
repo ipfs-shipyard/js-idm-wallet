@@ -1,11 +1,11 @@
 import signal from 'pico-signals';
 import { difference } from 'lodash';
 import { loadStore, dropStore } from './utils/orbitdb';
-import { assertApplication } from './utils/asserts';
+import { assertApp } from './utils/asserts';
 import { UnknownAppError } from '../../utils/errors';
-import { ORBITDB_APP_STORE_NAME, ORBITDB_APP_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE } from './utils/constants/applications';
+import { ORBITDB_APPS_STORE_NAME, ORBITDB_APPS_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE } from './utils/constants/apps';
 
-class Applications {
+class Apps {
     #currentDeviceId;
     #identityDescriptor;
 
@@ -50,7 +50,7 @@ class Applications {
     }
 
     async add(app) {
-        assertApplication(app);
+        assertApp(app);
 
         await this.#appsStore.put(app.id, app);
     }
@@ -81,7 +81,7 @@ class Applications {
     async unlinkCurrentDevice(appId) {
         const key = this.#getCurrentDeviceAppKey(appId);
 
-        if (typeof this.#appsDevicesStore.all[key] === 'undefined') {
+        if (!this.#appsDevicesStore.all[key]) {
             return;
         }
 
@@ -164,8 +164,8 @@ class Applications {
 }
 
 const loadOrbitdbStores = async (orbitdb) => {
-    const appsStore = await loadStore(orbitdb, ORBITDB_APP_STORE_NAME, ORBITDB_STORE_TYPE);
-    const appsDevicesStore = await loadStore(orbitdb, ORBITDB_APP_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE);
+    const appsStore = await loadStore(orbitdb, ORBITDB_APPS_STORE_NAME, ORBITDB_STORE_TYPE);
+    const appsDevicesStore = await loadStore(orbitdb, ORBITDB_APPS_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE);
 
     await appsStore.load();
     await appsDevicesStore.load();
@@ -173,13 +173,15 @@ const loadOrbitdbStores = async (orbitdb) => {
     return { appsStore, appsDevicesStore };
 };
 
-export const createApplications = async (currentDeviceId, identityDescriptor, orbitdb) => {
+export const createApps = async (currentDeviceId, identityDescriptor, orbitdb) => {
     const { appsStore, appsDevicesStore } = await loadOrbitdbStores(orbitdb, identityDescriptor.id);
 
-    return new Applications(currentDeviceId, identityDescriptor, appsStore, appsDevicesStore);
+    return new Apps(currentDeviceId, identityDescriptor, appsStore, appsDevicesStore);
 };
 
-export const removeApplications = async (identityDescriptor, orbitdb) => {
-    await dropStore(orbitdb, ORBITDB_APP_STORE_NAME, ORBITDB_STORE_TYPE);
-    await dropStore(orbitdb, ORBITDB_APP_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE);
+export const removeApps = async (identityDescriptor, orbitdb) => {
+    await dropStore(orbitdb, ORBITDB_APPS_STORE_NAME, ORBITDB_STORE_TYPE);
+    await dropStore(orbitdb, ORBITDB_APPS_DEVICES_STORE_NAME, ORBITDB_STORE_TYPE);
 };
+
+export { assertApp };

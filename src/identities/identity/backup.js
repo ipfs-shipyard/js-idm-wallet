@@ -1,12 +1,9 @@
-import signal from 'pico-signals';
 import { getBackupKey } from './utils/storage-keys';
 
 class Backup {
     #data;
     #identityDescriptor;
     #storage;
-
-    #onComplete = signal();
 
     constructor(data, identityDescriptor, storage) {
         this.#data = data;
@@ -30,11 +27,6 @@ class Backup {
         await this.#storage.remove(getBackupKey(this.#identityDescriptor.id));
 
         this.#data = undefined;
-        this.#onComplete.dispatch();
-    }
-
-    onComplete(fn) {
-        return this.#onComplete.add(fn);
     }
 }
 

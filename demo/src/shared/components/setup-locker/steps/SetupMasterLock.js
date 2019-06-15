@@ -7,11 +7,11 @@ class SetupMasterLock extends Component {
     state = {
         validation: {},
         loading: false,
-    }
+    };
 
     render() {
         const { loading, error } = this.state;
-    
+
         if (loading) {
             return <div>...Loading...</div>;
         }
@@ -26,7 +26,7 @@ class SetupMasterLock extends Component {
             <div>
                 <h3>To setup your wallet please enter a passphrase as the Master Lock.</h3>
                 <input
-                    type="text" 
+                    type="text"
                     id={ LOCK_TYPE }
                     name={ LOCK_TYPE }
                     onChange={ this.handleInputChange }
@@ -46,16 +46,16 @@ class SetupMasterLock extends Component {
         return (
             <div>
                 <span>⛔️ Passphrase is not strong enough ⛔️</span>
-                { validation.warning && 
+                { validation.warning &&
                     <div>
                         <h4>Warning ⚠️</h4>
                         <div>{ validation.warning.message }</div>
                     </div>
                 }
-                { validation.suggestions.length > 0 && 
+                { validation.suggestions.length > 0 &&
                     <div>
                         <h4>Suggestions 📖</h4>
-                        { validation.suggestions.map((suggestion, index) => <div key={index}>{ suggestion.message }</div> )}
+                        { validation.suggestions.map((suggestion, index) => <div key={ index }>{ suggestion.message }</div>)}
                     </div>
                 }
             </div>
@@ -66,16 +66,16 @@ class SetupMasterLock extends Component {
         const { locker } = this.props;
 
         locker.getLock(lockType).validate(solution)
-            .then((validation) => this.setState({ validation }))
-            .catch((error) => this.setState({
-                validation: {
-                    score: error.score,
-                    suggestions: error.suggestions,
-                    warning: error.warning,
-                    error: true,
-                }
-            }));
-    }
+        .then((validation) => this.setState({ validation }))
+        .catch((error) => this.setState({
+            validation: {
+                score: error.score,
+                suggestions: error.suggestions,
+                warning: error.warning,
+                error: true,
+            },
+        }));
+    };
 
     setLock = (lockType, solution) => {
         const { locker, onComplete } = this.props;
@@ -83,8 +83,8 @@ class SetupMasterLock extends Component {
         this.setState({ loading: true });
 
         locker.getLock(lockType).enable(solution)
-            .then(onComplete)
-            .catch((error) => this.setState({ loading: false, error }));
+        .then(onComplete)
+        .catch((error) => this.setState({ loading: false, error }));
     };
 
     handleInputChange = (event) => {
@@ -96,7 +96,7 @@ class SetupMasterLock extends Component {
         const { validation: { error } } = this.state;
 
         if (event.charCode === 13 && !error && this.inputValue) {
-            this.setLock(LOCK_TYPE, this.inputValue)
+            this.setLock(LOCK_TYPE, this.inputValue);
         }
     };
 }

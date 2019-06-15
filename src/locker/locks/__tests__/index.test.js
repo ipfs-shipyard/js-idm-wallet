@@ -4,7 +4,7 @@ describe('createLocks', () => {
     it('should create all lock types correctly', async () => {
         const storage = { has: jest.fn(() => true) };
 
-        const locks = await createLocks(storage, {});
+        const locks = await createLocks(storage, {}, 'passphrase');
 
         expect(Object.keys(locks)).toEqual(['passphrase']);
 

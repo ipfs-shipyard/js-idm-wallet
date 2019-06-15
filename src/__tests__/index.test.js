@@ -69,7 +69,7 @@ it('should fail if provided ipfs node is not online', async () => {
     try {
         await createWallet({ ipfs: mockIpfsNode });
     } catch (err) {
-        expect(err.message).toBe('IPFS node is unavailable.');
+        expect(err.message).toBe('IPFS node is unavailable');
         expect(err.code).toBe('IPFS_UNAVAILABLE');
     }
 });

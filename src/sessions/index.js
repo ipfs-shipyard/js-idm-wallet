@@ -1,6 +1,7 @@
 import signal from 'pico-signals';
+import { assertApp } from '../identities';
+import { UnknownSessionError, CreateSessionRevokedIdentityError } from '../utils/errors';
 import { loadSessions, createSession, removeSession, assertSessionOptions } from './session';
-import { UnknownSessionError, UnknownIdentityError, CreateSessionRevokedIdentityError } from '../utils/errors';
 
 class Sessions {
     #sessions;
@@ -20,25 +21,28 @@ class Sessions {
     }
 
     get(sessionId) {
-        if (!this.#sessions[sessionId]) {
+        const session = this.#sessions[sessionId];
+
+        if (!session || !session.isValid(sessionId)) {
             throw new UnknownSessionError(sessionId);
         }
 
-        return this.#sessions[sessionId];
+        return session;
     }
 
     isValid(sessionId) {
         const session = this.#sessions[sessionId];
 
-        return Boolean(session && session.isValid && session.isValid());
+        return Boolean(session && session.isValid());
     }
 
     async create(identityId, app, options) {
-        assertSessionOptions();
+        assertApp(app);
+        assertSessionOptions(options);
 
-        const identity = this.#getIdentity(identityId);
+        const identity = this.#identities.get(identityId);
 
-        if (this.#isIdentityRevoked(identity)) {
+        if (identity.isRevoked()) {
             throw new CreateSessionRevokedIdentityError(identityId);
         }
 
@@ -63,6 +67,12 @@ class Sessions {
         } catch (err) {
             delete this.#sessions[newSessionId];
 
+            try {
+                await removeSession(newSessionId, this.#storage).catch(() => {});
+            } catch (err) {
+                console.warn(`Unable to remove session "${newSessionId}" after failed attempt to create app "${app.id}" or link it to "${identityId}". Will cleanup on when identities got loaded again.`, err);
+            }
+
             throw err;
         }
 
@@ -76,26 +86,23 @@ class Sessions {
             return;
         }
 
+        await removeSession(sessionId, this.#storage);
         delete this.#sessions[sessionId];
 
-        try {
-            const appId = session.getAppId();
-            const identityId = session.getIdentityId();
+        const appId = session.getAppId();
+        const identityId = session.getIdentityId();
 
-            if (this.#identities.isLoaded() && this.#identities.has(identityId)) {
-                const identity = this.#identities.get(identityId);
+        if (this.#identities.isLoaded() && this.#identities.has(identityId)) {
+            const identity = this.#identities.get(identityId);
 
+            try {
                 await identity.apps.unlinkCurrentDevice(appId);
+            } catch (err) {
+                console.warn(`Something went wrong unlinking current device with app "${appId}" for identity "${identityId}". Will retry on reload.`, err);
             }
-        } catch (err) {
-            this.#sessions[sessionId] = session;
-
-            throw err;
         }
 
-        await removeSession(sessionId, this.#storage);
-
-        this.#onDestroy.dispatch(sessionId);
+        this.#onDestroy.dispatch(sessionId, session.getMeta());
     }
 
     onDestroy(fn) {
@@ -112,28 +119,6 @@ class Sessions {
         const identitySessions = this.#getSessionsByIdentityId(identityId);
 
         await Promise.all(identitySessions.map((session) => this.destroy(session.getId())));
-    }
-
-    #getIdentity = (identityId) => {
-        try {
-            return this.#identities.get(identityId);
-        } catch (err) {
-            if (err instanceof UnknownIdentityError) {
-                this.#destroySessionsByIdentityId(identityId);
-            }
-
-            throw err;
-        }
-    }
-
-    #isIdentityRevoked = (identity) => {
-        const isRevoked = identity.isRevoked();
-
-        if (isRevoked) {
-            this.#destroySessionsByIdentityId(identity.getId());
-        }
-
-        return isRevoked;
     }
 
     #addIdentityListeners = (identityId) => {
@@ -171,7 +156,8 @@ class Sessions {
                 const session = this.#getSessionByIdentityAndAppId(identityId, app.id);
 
                 if (!session) {
-                    identity.apps.unlinkCurrentDevice(app.id).catch(() => console.warn(`Something went wrong unlinking current device with app "${app.id}" for identity "${identityId}". Will retry on reload.`));
+                    identity.apps.unlinkCurrentDevice(app.id)
+                    .catch((err) => console.warn(`Something went wrong unlinking current device with app "${app.id}" for identity "${identityId}". Will retry on reload.`, err));
                 }
             });
 
@@ -183,7 +169,8 @@ class Sessions {
             const identityId = session.getIdentityId();
 
             if (!this.#identities.has(identityId) || this.#identities.get(identityId).isRevoked()) {
-                this.destroy(sessionId).catch(() => console.warn(`Something went wrong destroying session "${sessionId}" for identity "${identityId}". Will retry on reload.`));
+                this.destroy(sessionId)
+                .catch((err) => console.warn(`Something went wrong destroying session "${sessionId}" for identity "${identityId}". Will retry on reload.`, err));
             }
         });
     }
@@ -220,16 +207,13 @@ class Sessions {
         if (session && !isLinked) {
             const sessionId = session.getId();
 
-            this.destroy(session.getId()).catch(() => console.warn(`Something went wrong destroying session "${sessionId}" for app "${appId} of identity "${identityId}" . Will retry on reload.`));
-        } else if (!session && isLinked) {
-            const sessions = await loadSessions(this.#storage);
-            const newSession = this.#getSessionByIdentityAndAppId(identityId, appId, sessions);
-
-            if (newSession) {
-                this.#addIdentityListeners(identityId);
-
-                this.#sessions[newSession.getId()] = newSession;
+            try {
+                await this.destroy(session.getId());
+            } catch (err) {
+                console.warn(`Something went wrong destroying session "${sessionId}" for app "${appId}" of identity "${identityId}" . Will retry on reload.`);
             }
+        } else if (!session && isLinked) {
+            console.warn(`App "${appId}" of identity "${identityId}" is linked but there's no session. Will fix on reload.`);
         }
     }
 }

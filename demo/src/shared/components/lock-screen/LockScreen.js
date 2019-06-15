@@ -20,7 +20,7 @@ class LockScreen extends Component {
             <div>
                 <h1>Lock Screen</h1>
                 <input
-                    type="text" 
+                    type="text"
                     id={ LOCK_TYPE }
                     name={ LOCK_TYPE }
                     onChange={ this.handleInputChange }
@@ -29,6 +29,15 @@ class LockScreen extends Component {
             </div>
         );
     }
+
+    unlock = (lockType, challenge) => {
+        const { locker } = this.props;
+
+        this.setState({ loading: true });
+
+        locker.getLock(lockType).unlock(challenge)
+        .catch((error) => this.setState({ loading: false, error }));
+    };
 
     handleInputChange = (event) => {
         this.inputValue = event.target.value;
@@ -39,18 +48,9 @@ class LockScreen extends Component {
             this.unlock(LOCK_TYPE, this.inputValue);
         }
     };
-
-    unlock = (lockType, challenge) => {
-        const { locker } = this.props;
-
-        this.setState({ loading: true });
-
-        locker.getLock(lockType).unlock(challenge)
-            .catch((error) => this.setState({ loading: false, error }));
-    };
 }
 
-LockScreen.propTyes = {
+LockScreen.propTypes = {
     locker: PropTypes.object,
 };
 

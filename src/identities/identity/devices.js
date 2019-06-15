@@ -66,7 +66,7 @@ class Devices {
         if (!device.revokedAt) {
             // Remove device from DID Document and only then remove it from orbitdb
             await this.#didm.update(this.#identityDescriptor.did, params, (document) => {
-                document.revokePublicKey(`${DID_PUBLIC_KEY_PREFIX}${id}`);
+                document.revokePublicKey(device.didPublicKeyId);
             });
 
             await this.#orbitdbStore.put(id, {

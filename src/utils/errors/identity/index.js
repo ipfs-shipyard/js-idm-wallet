@@ -3,7 +3,7 @@ import BaseError from '../base';
 export * from './profile';
 export * from './devices';
 export * from './backup';
-export * from './applications';
+export * from './apps';
 
 export class InvalidIdentityPropertyError extends BaseError {
     constructor(property, value) {

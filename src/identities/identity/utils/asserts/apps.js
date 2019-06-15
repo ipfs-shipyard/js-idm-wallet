@@ -1,6 +1,6 @@
 import { InvalidAppPropertyError } from '../../../../utils/errors';
 
-export const assertApplication = (app) => {
+export const assertApp = (app) => {
     const { id, name, homepageUrl, iconUrl } = app;
 
     if (!id || typeof id !== 'string') {
@@ -11,11 +11,11 @@ export const assertApplication = (app) => {
         throw new InvalidAppPropertyError('name', name);
     }
 
-    if (!homepageUrl || typeof homepageUrl !== 'string') {
+    if (homepageUrl && typeof homepageUrl !== 'string') {
         throw new InvalidAppPropertyError('homepageUrl', homepageUrl);
     }
 
-    if (!iconUrl || typeof iconUrl !== 'string') {
+    if (iconUrl && typeof iconUrl !== 'string') {
         throw new InvalidAppPropertyError('iconUrl', iconUrl);
     }
 };

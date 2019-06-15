@@ -1,5 +1,5 @@
 import signal from 'pico-signals';
-import { parse as parseDid } from 'did-uri';
+import { parseDid } from '../utils/did';
 import {
     UnsupportedDidMethodPurposeError,
     IdentitiesNotLoadedError,
@@ -169,7 +169,7 @@ class Identities {
             this.#assertDidmSupport(didMethod, 'update');
 
             await this.#didm.update(did, params, (document) => {
-                document.revokePublicKey(identity.devices.getCurrent().id);
+                document.revokePublicKey(identity.devices.getCurrent().didPublicKeyId);
             });
         }
 
@@ -212,3 +212,5 @@ class Identities {
 const createIdentities = (storage, didm, ipfs) => new Identities(storage, didm, ipfs);
 
 export default createIdentities;
+
+export { assertApp } from './identity';

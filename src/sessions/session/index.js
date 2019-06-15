@@ -1,8 +1,8 @@
 import nanoidGenerate from 'nanoid/generate';
-import { format as formatDid } from 'did-uri';
 import { createSigner } from 'idm-signatures';
 import { DESCRIPTOR_KEY_PREFIX, getSessionKey } from './utils/storage-keys';
 import { generateDeviceChildKeyMaterial } from '../../utils/crypto';
+import { formatDid } from '../../utils/did';
 
 const DEFAULT_MAX_AGE = 7776000000;
 
@@ -104,13 +104,27 @@ export const removeSession = async (sessionId, storage) => {
 };
 
 export const loadSessions = async (storage) => {
-    const sessions = await storage.list({
+    const descriptors = await storage.list({
         gte: DESCRIPTOR_KEY_PREFIX,
         lte: `${DESCRIPTOR_KEY_PREFIX}\xFF`,
         keys: false,
     });
 
-    return sessions.reduce((acc, descriptor) => Object.assign(acc, { [descriptor.id]: new Session(descriptor) }), {});
+    const sessions = descriptors.map((descriptor) => new Session(descriptor));
+
+    // Return a object indexed by the session key, while removing expired sessions
+    return sessions.reduce((acc, session) => {
+        const sessionId = session.getId();
+
+        if (session.isValid()) {
+            acc[sessionId] = session;
+        } else {
+            storage.remove(getSessionKey(sessionId))
+            .catch((err) => console.warn(`Unable to remove expired session with id "${sessionId}".  Will retry on reload.`, err));
+        }
+
+        return acc;
+    }, {});
 };
 
 export { assertSessionOptions } from './utils/asserts';

@@ -19,11 +19,15 @@ class PassphraseLock {
 
     #onEnabledChange = signal();
 
-    constructor(storage, secret, master, enabled) {
+    constructor(storage, secret, masterLockType, enabled) {
         this.#storage = storage;
         this.#secret = secret;
-        this.#master = !!master;
+        this.#master = masterLockType === this.getType();
         this.#enabled = !!enabled;
+    }
+
+    getType() {
+        return 'passphrase';
     }
 
     isMaster() {
@@ -160,10 +164,10 @@ class PassphraseLock {
     }
 }
 
-const createPassphraseLock = async (storage, secret, master = false) => {
+const createPassphraseLock = async (storage, secret, masterLockType) => {
     const enabled = await storage.has(STORAGE_KEY);
 
-    return new PassphraseLock(storage, secret, master, enabled);
+    return new PassphraseLock(storage, secret, masterLockType, enabled);
 };
 
 export default createPassphraseLock;

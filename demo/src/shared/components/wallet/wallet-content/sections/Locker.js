@@ -26,7 +26,7 @@ class Locker extends Component {
             </div>
         );
     }
-    
+
     handleLockLocker = () => {
         const { wallet: { locker } } = this.props;
 

@@ -171,6 +171,14 @@ describe('getSecret', () => {
     });
 });
 
+describe('listLockTypes', () => {
+    it('should return the list of lock types', async () => {
+        const locker = await createLocker(mockStorage, mockSecret, 'passphrase');
+
+        expect(locker.listLockTypes()).toEqual(['passphrase']);
+    });
+});
+
 describe('getLock', () => {
     it('should return lock successfully', async () => {
         const locker = await createLocker(mockStorage, mockSecret, 'passphrase');

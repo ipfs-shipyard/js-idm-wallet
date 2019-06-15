@@ -12,12 +12,6 @@ export class UnsupportedDidMethodPurposeError extends BaseError {
     }
 }
 
-export class InvalidDidError extends BaseError {
-    constructor(did) {
-        super(`Invalid DID: ${did}`, 'INVALID_DID');
-    }
-}
-
 export class MissingDidParameters extends BaseError {
     constructor(message) {
         super(message, 'MISSING_DID_PARAMETERS');

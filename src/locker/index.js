@@ -41,10 +41,6 @@ class Locker {
         return this.#masterLock;
     }
 
-    get locks() {
-        return this.#locks;
-    }
-
     isPristine() {
         return this.#pristine;
     }
@@ -55,6 +51,10 @@ class Locker {
 
     getSecret() {
         return this.#secret.get();
+    }
+
+    listLockTypes() {
+        return Object.keys(this.#locks);
     }
 
     getLock(type) {

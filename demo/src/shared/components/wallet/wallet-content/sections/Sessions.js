@@ -62,7 +62,7 @@ class Sessions extends Component {
             const session = wallet.sessions.getById(this.getSessionId);
 
             console.log(session);
-        } catch(err) {
+        } catch (err) {
             console.error(err.message);
         }
     };
@@ -85,20 +85,20 @@ class Sessions extends Component {
         const { wallet } = this.props;
 
         wallet.sessions.create(this.createIdentityId, mockApp, { maxAge: 1000 * 60 * 3 })
-            .then((session) => {
-                console.log('Session:', session);
-                console.log('Serialized Session:', {
-                    id: session.getId(),
-                    appId: session.getAppId(),
-                    identityId: session.getIdentityId(),
-                    identityDid: session.getIdentityDid(),
-                    didPublicKeyId: session.getDidPublicKeyId(),
-                    keyMaterial: session.getKeyMaterial(),
-                    meta: session.getMeta(),
-                    createdAt: session.getCreatedAt(),
-                });
-            })
-            .catch(console.error);
+        .then((session) => {
+            console.log('Session:', session);
+            console.log('Serialized Session:', {
+                id: session.getId(),
+                appId: session.getAppId(),
+                identityId: session.getIdentityId(),
+                identityDid: session.getIdentityDid(),
+                didPublicKeyId: session.getDidPublicKeyId(),
+                keyMaterial: session.getKeyMaterial(),
+                meta: session.getMeta(),
+                createdAt: session.getCreatedAt(),
+            });
+        })
+        .catch(console.error);
     };
 
     handleDestroyChange = (event) => {
@@ -109,7 +109,7 @@ class Sessions extends Component {
         const { wallet } = this.props;
 
         wallet.sessions.destroy(this.destroySessionId)
-            .then(() => console.log(`Session destroyed: ${this.destroySessionId}`))
+        .then(() => console.log(`Session destroyed: ${this.destroySessionId}`));
     };
 }
 

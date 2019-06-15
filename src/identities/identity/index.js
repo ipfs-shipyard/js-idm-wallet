@@ -1,7 +1,7 @@
 import pReduce from 'p-reduce';
 import signal from 'pico-signals';
 import { createSigner } from 'idm-signatures';
-import { format as formatDid } from 'did-uri';
+import { formatDid } from '../../utils/did';
 import { UnableCreateIdentityError } from '../../utils/errors';
 import { getDescriptorKey, DESCRIPTOR_KEY_PREFIX } from './utils/storage-keys';
 import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb';
@@ -9,7 +9,7 @@ import { hashSha256 } from '../../utils/crypto';
 import * as devicesFns from './devices';
 import * as backupFns from './backup';
 import * as profileFns from './profile';
-import * as appsFns from './applications';
+import * as appsFns from './apps';
 
 class Identity {
     #descriptor;
@@ -143,7 +143,7 @@ export const createIdentity = async ({ did, currentDevice, backupData, profileDe
         const backup = await backupFns.createBackup(backupData, descriptor, storage);
         const profile = await profileFns.createProfile(profileDetails, descriptor, ipfs, orbitdb);
         const devices = await devicesFns.createDevices(currentDevice, descriptor, didm, storage, orbitdb);
-        const apps = await appsFns.createApplications(currentDevice.id, descriptor, orbitdb);
+        const apps = await appsFns.createApps(currentDevice.id, descriptor, orbitdb);
 
         return new Identity(descriptor, storage, orbitdb, devices, backup, profile, apps);
     } catch (err) {
@@ -170,19 +170,19 @@ export const removeIdentity = async (id, storage, ipfs) => {
     await devicesFns.removeDevices(descriptor, storage, orbitdb);
     await profileFns.removeProfile(descriptor, ipfs, orbitdb);
     await backupFns.removeBackup(descriptor, storage);
-    await appsFns.removeApplications(descriptor, orbitdb);
+    await appsFns.removeApps(descriptor, orbitdb);
 
     await dropOrbitDb(orbitdb);
 };
 
 export const loadIdentities = async (storage, didm, ipfs) => {
-    const identitiesKeys = await storage.list({
+    const descriptors = await storage.list({
         gte: DESCRIPTOR_KEY_PREFIX,
         lte: `${DESCRIPTOR_KEY_PREFIX}\xFF`,
         keys: false,
     });
 
-    return pReduce(identitiesKeys, async (acc, descriptor) => {
+    return pReduce(descriptors, async (acc, descriptor) => {
         const orbitdb = await getOrbitDb(descriptor.id, ipfs, {
             replicate: !descriptor.revoked,
         });
@@ -190,7 +190,7 @@ export const loadIdentities = async (storage, didm, ipfs) => {
         const backup = await backupFns.restoreBackup(descriptor, storage);
         const profile = await profileFns.restoreProfile(descriptor, ipfs, orbitdb);
         const devices = await devicesFns.restoreDevices(descriptor, didm, storage, orbitdb);
-        const apps = await appsFns.createApplications(devices.getCurrent().id, descriptor, orbitdb);
+        const apps = await appsFns.createApps(devices.getCurrent().id, descriptor, orbitdb);
 
         const identity = new Identity(descriptor, storage, orbitdb, devices, backup, profile, apps);
 
@@ -200,3 +200,4 @@ export const loadIdentities = async (storage, didm, ipfs) => {
 
 export { assertDeviceInfo, assertProfileDetails } from './utils/asserts';
 export { generateCurrentDevice } from './devices';
+export { assertApp } from './apps';

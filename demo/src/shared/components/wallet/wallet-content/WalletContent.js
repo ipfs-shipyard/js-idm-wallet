@@ -1,9 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-
 import Timer from '../../timer/Timer';
 import { Sessions, Locker, Identities } from './sections';
-
 import './WalletContent.css';
 
 class WalletContent extends Component {
@@ -18,8 +16,7 @@ class WalletContent extends Component {
 
         return (
             <div className="WalletContent">
-                <div className="leftBar">
-                </div>
+                <div className="leftBar" />
                 <div className="container">
                     <div className="top">
                         <Timer className="timer" locker={ wallet.locker } />

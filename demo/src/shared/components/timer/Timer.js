@@ -25,19 +25,21 @@ class Timer extends Component {
     }
 
     getTimeString() {
-        const minutes = Math.trunc(this.state.time / (60 * 1000)).toString().padStart(2, '0');
-        const seconds = Math.trunc((this.state.time % (60 * 1000)) / 1000).toString().padStart(2, '0');
+        const minutes = Math.trunc(this.state.time / (60 * 1000)).toString()
+        .padStart(2, '0');
+        const seconds = Math.trunc((this.state.time % (60 * 1000)) / 1000).toString()
+        .padStart(2, '0');
 
         return `${minutes}:${seconds}`;
     }
 
     getRemainingTime = () => {
         const { locker } = this.props;
-        
+
         this.idleTimeout = setTimeout(this.getRemainingTime, 250);
 
         this.setState({ time: locker.idleTimer.getRemainingTime() });
-    }
+    };
 }
 
 Timer.propTypes = {

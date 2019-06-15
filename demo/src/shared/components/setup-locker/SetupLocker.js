@@ -1,13 +1,12 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-
 import SetupMasterLock from './steps/SetupMasterLock';
 import SetupIdleTimer from './steps/SetupIdleTimer';
 
 class SetupLocker extends Component {
     state = {
         step: 1,
-    }
+    };
 
     render() {
         return (
@@ -23,12 +22,12 @@ class SetupLocker extends Component {
         const { locker } = this.props;
 
         switch (step) {
-            case 1:
-                return <SetupMasterLock locker={ locker } onComplete={ this.handleStepComplete } />
-            case 2:
-                return <SetupIdleTimer locker={ locker } onComplete={ this.handleStepComplete } />
-            default:
-                return null;
+        case 1:
+            return <SetupMasterLock locker={ locker } onComplete={ this.handleStepComplete } />;
+        case 2:
+            return <SetupIdleTimer locker={ locker } onComplete={ this.handleStepComplete } />;
+        default:
+            return null;
         }
     }
 
@@ -41,11 +40,12 @@ class SetupLocker extends Component {
         }
 
         this.setState({ step: step + 1 });
-    }
+    };
 }
 
 SetupLocker.propTypes = {
     locker: PropTypes.object.isRequired,
+    onComplete: PropTypes.func.isRequired,
 };
 
 export default SetupLocker;

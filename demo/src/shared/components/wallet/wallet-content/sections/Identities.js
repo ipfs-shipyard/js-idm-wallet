@@ -84,11 +84,11 @@ class Identities extends Component {
             },
             deviceInfo: {
                 type: 'laptop',
-                name: 'MacBook Pro'
+                name: 'MacBook Pro',
             },
         })
         .then((identity) => {
-            console.log('Created Identity:')
+            console.log('Created Identity:');
             console.log('Identity:', identity);
             console.log('Serialized:', {
                 addedAt: identity.getAddedAt(),
@@ -99,7 +99,7 @@ class Identities extends Component {
                 profile: identity.profile.getDetails(),
             });
             console.log(' ');
-            console.log('End of Created Identity.')
+            console.log('End of Created Identity.');
         });
     };
 
@@ -114,10 +114,10 @@ class Identities extends Component {
             mnemonic: this.importValue,
             deviceInfo: {
                 type: 'laptop',
-                name: 'MacBook Pro'
+                name: 'MacBook Pro',
             },
         })
-        .then((result) => console.log('Imported Identity:', result))
+        .then((result) => console.log('Imported Identity:', result));
     };
 
     handlePeekInputChange = (event) => {
