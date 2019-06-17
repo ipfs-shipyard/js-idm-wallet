@@ -2,7 +2,6 @@ import pReduce from 'p-reduce';
 import signal from 'pico-signals';
 import { createSigner } from 'idm-signatures';
 import { formatDid } from '../../utils/did';
-import { UnableCreateIdentityError } from '../../utils/errors';
 import { getDescriptorKey, DESCRIPTOR_KEY_PREFIX } from './utils/storage-keys';
 import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb';
 import { hashSha256 } from '../../utils/crypto';
@@ -149,7 +148,7 @@ export const createIdentity = async ({ did, currentDevice, backupData, profileDe
     } catch (err) {
         await removeIdentity(id, storage, orbitdb);
 
-        throw new UnableCreateIdentityError(err.message, err.code);
+        throw err;
     }
 };
 

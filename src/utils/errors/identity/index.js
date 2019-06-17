@@ -10,9 +10,3 @@ export class InvalidIdentityPropertyError extends BaseError {
         super(`Invalid identity ${property}: ${value}`, 'INVALID_IDENTITY_PROPERTY');
     }
 }
-
-export class UnableCreateIdentityError extends BaseError {
-    constructor(originalMessage, originalCode) {
-        super(`Unable to create identity: "${originalMessage}"`, 'UNABLE_CREATE_IDENTITY', { originalCode });
-    }
-}

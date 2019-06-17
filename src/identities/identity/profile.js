@@ -198,6 +198,8 @@ export const createProfile = async (details, identityDescriptor, ipfs, orbitdb) 
     cancelPeekDropStore(orbitdbStore);
 
     if (details) {
+        await orbitdbStore.put('identifier', identityDescriptor.did);
+
         for (const [key, value] of Object.entries(details)) {
             await profile.setProperty(key, value); // eslint-disable-line no-await-in-loop
         }
