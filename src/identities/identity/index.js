@@ -2,9 +2,10 @@ import pReduce from 'p-reduce';
 import signal from 'pico-signals';
 import { createSigner } from 'idm-signatures';
 import { formatDid } from '../../utils/did';
+import { hashSha256 } from '../../utils/crypto';
+import { IdentityRevokedError } from '../../utils/errors';
 import { getDescriptorKey, DESCRIPTOR_KEY_PREFIX } from './utils/storage-keys';
 import { getOrbitDb, dropOrbitDb, stopOrbitDbReplication } from './utils/orbitdb';
-import { hashSha256 } from '../../utils/crypto';
 import * as devicesFns from './devices';
 import * as backupFns from './backup';
 import * as profileFns from './profile';
@@ -75,6 +76,10 @@ class Identity {
     }
 
     getSigner() {
+        if (this.isRevoked()) {
+            throw new IdentityRevokedError(`Unable to create signer for revoked identity: ${this.getIdentityId()}`);
+        }
+
         if (!this.#signer) {
             this.#signer = this.#createSigner();
         }

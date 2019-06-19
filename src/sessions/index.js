@@ -1,6 +1,6 @@
 import signal from 'pico-signals';
 import { assertApp } from '../identities';
-import { UnknownSessionError, CreateSessionRevokedIdentityError } from '../utils/errors';
+import { UnknownSessionError, IdentityRevokedError } from '../utils/errors';
 import { loadSessions, createSession, removeSession, assertSessionOptions } from './session';
 
 class Sessions {
@@ -43,7 +43,7 @@ class Sessions {
         const identity = this.#identities.get(identityId);
 
         if (identity.isRevoked()) {
-            throw new CreateSessionRevokedIdentityError(identityId);
+            throw new IdentityRevokedError(`Unable to create session for revoked identity: ${identityId}`);
         }
 
         const session = this.#getSessionByIdentityAndAppId(identityId, app.id);
