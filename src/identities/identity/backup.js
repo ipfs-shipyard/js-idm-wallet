@@ -1,3 +1,4 @@
+import hexarray from 'hex-array';
 import { getBackupKey } from './utils/storage-keys';
 
 class Backup {
@@ -32,14 +33,24 @@ class Backup {
 
 export const createBackup = async (data, identityDescriptor, storage) => {
     if (data) {
-        await storage.set(getBackupKey(identityDescriptor.id), data, { encrypt: true });
+        const serializedData = {
+            ...data,
+            seed: hexarray.toString(data.seed, { uppercase: false }),
+        };
+
+        await storage.set(getBackupKey(identityDescriptor.id), serializedData, { encrypt: true });
     }
 
     return new Backup(data, identityDescriptor, storage);
 };
 
 export const restoreBackup = async (identityDescriptor, storage) => {
-    const data = await storage.get(getBackupKey(identityDescriptor.id));
+    const serializedData = await storage.get(getBackupKey(identityDescriptor.id));
+
+    const data = serializedData && {
+        ...serializedData,
+        seed: hexarray.fromString(serializedData.seed),
+    };
 
     return new Backup(data, identityDescriptor, storage);
 };
