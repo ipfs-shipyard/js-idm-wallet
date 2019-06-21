@@ -45,17 +45,18 @@ const createWallet = async (options) => {
         ...options,
     };
 
-    const ipfsNode = await createIpfs(options.ipfs);
+    const ipfs = await createIpfs(options.ipfs);
 
     const secret = createSecret();
 
-    const didm = createDidm(ipfsNode);
+    const didm = createDidm(ipfs);
     const storage = await createStorage(secret);
     const locker = await createLocker(storage, secret);
-    const identities = createIdentities(storage, didm, ipfsNode);
+    const identities = createIdentities(storage, didm, ipfs);
     const sessions = await createSessions(storage, identities);
 
     const idmWallet = {
+        ipfs,
         didm,
         storage,
         locker,

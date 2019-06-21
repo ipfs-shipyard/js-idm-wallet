@@ -1,7 +1,7 @@
 import signal from 'pico-signals';
 import pDelay from 'delay';
 import pSeries from 'p-series';
-import { pick, get, has, isEqual } from 'lodash';
+import { pick, has, isEqual } from 'lodash';
 import { loadStore, dropStore, dropOrbitDbIfEmpty, waitStoreReplication } from './utils/orbitdb';
 import createBlobStore from './utils/blob-store';
 import { assertProfileProperty, assertNonMandatoryProfileProperty } from './utils/asserts';
@@ -106,9 +106,7 @@ class Profile {
 
         PROFILE_BLOB_PROPERTIES.forEach((key) => {
             if (details[key]) {
-                const blobRef = this.#blobStore.get(key);
-
-                details[key] = get(blobRef, 'content.dataUri', null);
+                details[key] = this.#blobStore.getUrl(key);
             }
         });
 

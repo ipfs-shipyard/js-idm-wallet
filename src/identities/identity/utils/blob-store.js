@@ -1,6 +1,10 @@
 import { Buffer } from 'buffer';
 import signal from 'pico-signals';
 import { difference } from 'lodash';
+import pTimeout from 'p-timeout';
+import infuraIpfs from './infura-ipfs';
+import { INFURA_IPFS_ENDPOINT, INFURA_ADD_FILE_TIMEOUT, INFURA_HAS_FILE_TIMEOUT } from './constants/infura';
+import { InfuraHashMismatch } from '../../../utils/errors';
 
 class BlobStore {
     #ipfs;
@@ -15,27 +19,31 @@ class BlobStore {
         return this.#refs.get(key);
     }
 
-    async put(key, blob) {
-        const { type, data } = blob;
-        const buffer = Buffer.from(data);
+    getUrl(key) {
+        const ref = this.#refs.get(key);
 
-        const [{ hash }] = await this.#ipfs.add(buffer, { pin: true });
+        return ref && ref.status === 'synced' ? `${INFURA_IPFS_ENDPOINT}/cat?arg=${ref.hash}` : undefined;
+    }
+
+    async put(key, blob) {
+        const { type } = blob;
+
+        const hash = await this.#addToIpfs(blob);
+
+        await this.#addToInfura(key, hash, blob.data).catch((err) => console.warn(`Unable to add "${key}" to infura`, err));
 
         let ref = this.#refs.get(key);
 
         // Skip if hash & type are the same and it's already loaded to avoid triggering change
-        if (ref && ref.type === type && ref.hash === hash && ref.content.status === 'fulfilled') {
+        if (ref && ref.type === type && ref.hash === hash && ref.status === 'synced') {
             return ref;
         }
 
         ref = {
             type,
             hash,
-            content: {
-                status: 'fulfilled',
-                data,
-                dataUri: this.#getDataUri(type, buffer),
-            },
+            status: 'synced',
+            error: undefined,
         };
 
         this.#refs.set(key, ref);
@@ -90,58 +98,90 @@ class BlobStore {
     #syncAdded = async (key, ref) => {
         ref = {
             ...ref,
-            content: {
-                status: 'pending',
-                error: undefined,
-                data: undefined,
-                dataUri: undefined,
-            },
+            status: 'syncing',
+            error: undefined,
         };
 
-        // Mark the blob as pending
         this.#refs.set(key, ref);
         this.#notifyChange(key);
 
-        // Attempt to load the blob
-        let content;
+        let updatedRef;
 
+        // Attempt to pin the blob && ensure it's on infura
         try {
-            const [{ content: buffer }] = await this.#ipfs.get(ref.hash);
-
-            // Pin the hash so that we can serve it to others
             await this.#ipfs.pin.add(ref.hash);
+            await this.#maybeAddToInfura(key, ref.hash).catch((err) => console.warn(`Unable to check and add "${key}" to infura`, err));
 
-            const data = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
-
-            content = {
-                status: 'fulfilled',
+            updatedRef = {
+                ...ref,
+                status: 'synced',
                 error: undefined,
-                data,
-                dataUri: this.#getDataUri(ref.type, buffer),
             };
         } catch (error) {
-            content = {
-                status: 'rejected',
+            updatedRef = {
+                ...ref,
+                status: 'error',
                 error,
-                data: undefined,
-                dataUri: undefined,
             };
         }
 
         const stillExactSame = this.#refs.get(key) === ref;
 
         if (stillExactSame) {
-            this.#refs.set(key, { ...ref, content });
+            this.#refs.set(key, updatedRef);
             this.#notifyChange(key, true);
         }
     }
 
-    #isSame = (ref1, ref2) => ref1.type === ref2.type && ref1.hash === ref2.hash;
-
-    #getDataUri = (type, buffer) => `data:${type};base64,${buffer.toString('base64')}`;
-
     #notifyChange = (key, async = false) => {
-        this.#onChange.dispatch(key, this.#refs.get(key), async);
+        const ref = this.#refs.get(key);
+
+        this.#onChange.dispatch(key, ref, async);
+    }
+
+    #addToIpfs = async (blob) => {
+        const buffer = Buffer.from(blob.data);
+
+        const [{ hash }] = await this.#ipfs.add(buffer, { cidVersion: 0, pin: true });
+
+        return hash;
+    }
+
+    #maybeAddToInfura = async (key, hash, data) => {
+        // Check if files exists in infura
+        const exists = await pTimeout(
+            infuraIpfs.block.stat(hash).then(() => true),
+            INFURA_HAS_FILE_TIMEOUT,
+            () => false
+        );
+
+        if (exists) {
+            return;
+        }
+
+        // If there's no data yet, grab it
+        if (!data) {
+            const [{ content: buffer }] = await this.#ipfs.get(hash);
+
+            data = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+        }
+
+        await this.#addToInfura(key, hash, data);
+    }
+
+    #addToInfura = async (key, hash, data) => {
+        const buffer = Buffer.from(data);
+
+        const [{ hash: infuraHash }] = await pTimeout(
+            infuraIpfs.add(buffer, { cidVersion: 0, pin: true }),
+            INFURA_ADD_FILE_TIMEOUT,
+        );
+
+        if (infuraHash !== hash) {
+            throw new InfuraHashMismatch(infuraHash, hash);
+        }
+
+        return hash;
     }
 }
 

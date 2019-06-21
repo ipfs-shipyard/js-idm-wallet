@@ -23,3 +23,9 @@ export class ProfileReplicationTimeoutError extends BaseError {
         super('Profile replication timed out', 'PROFILE_REPLICATION_TIMEOUT');
     }
 }
+
+export class InfuraHashMismatch extends BaseError {
+    constructor(infuraHash, expectedHash) {
+        super(`Expecting infura response hash to be "${expectedHash}" but got "${infuraHash} instead`, 'INFURA_HASH_MISMATCH');
+    }
+}

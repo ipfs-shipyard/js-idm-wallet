@@ -17,7 +17,7 @@ beforeEach(() => {
 it('should create wallet successfully', async () => {
     const wallet = await createWallet();
 
-    expect(Object.keys(wallet)).toEqual(['didm', 'storage', 'locker', 'identities', 'sessions']);
+    expect(Object.keys(wallet)).toEqual(['ipfs', 'didm', 'storage', 'locker', 'identities', 'sessions']);
     expect(Ipfs).toHaveBeenCalledTimes(1);
 });
 
