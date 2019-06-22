@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.4.2](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.4.1...v0.4.2) (2019-06-22)
+
+
+### Bug Fixes
+
+* check if identity is revoked before creating the signer ([9851ce7](https://github.com/ipfs-shipyard/js-idm-wallet/commit/9851ce7))
+* fix backup seed not being correctyl serialized ([aa234f1](https://github.com/ipfs-shipyard/js-idm-wallet/commit/aa234f1))
+
+
+### Features
+
+* upload blobs to infura ([35a6fa4](https://github.com/ipfs-shipyard/js-idm-wallet/commit/35a6fa4))
+
+
+
 ### [0.4.1](https://github.com/ipfs-shipyard/js-idm-wallet/compare/v0.4.0...v0.4.1) (2019-06-17)
 
 
