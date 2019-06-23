@@ -110,7 +110,8 @@ class BlobStore {
         // Attempt to pin the blob && ensure it's on infura
         try {
             await this.#ipfs.pin.add(ref.hash);
-            await this.#maybeAddToInfura(key, ref.hash).catch((err) => console.warn(`Unable to check and add "${key}" to infura`, err));
+
+            this.#maybeAddToInfura(key, ref.hash).catch((err) => console.warn(`Unable to check and add "${key}" to infura`, err));
 
             updatedRef = {
                 ...ref,
