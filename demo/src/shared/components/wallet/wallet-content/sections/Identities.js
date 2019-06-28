@@ -4,45 +4,42 @@ import PropTypes from 'prop-types';
 class Identities extends Component {
     render() {
         return (
-            <div className="section">
-                <h4>Identities</h4>
-                <div className="content">
-                    <div className="option">
-                        <span>List</span>
-                        <button onClick={ this.handleList }>List</button>
-                    </div>
-                    <div className="option">
-                        <span>Create</span>
-                        <button onClick={ this.handleCreate }>Create</button>
-                    </div>
-                    <div className="option">
-                        <span>Peek</span>
-                        <input
-                            type="text"
-                            placeholder="mnemonic"
-                            onChange={ this.handlePeekInputChange } />
-                        <button onClick={ this.handlePeekSubmit }>Submit</button>
-                    </div>
-                    <div className="option">
-                        <span>Import</span>
-                        <input
-                            type="text"
-                            placeholder="mnemonic"
-                            onChange={ this.handleImportInputChange } />
-                        <button onClick={ this.handleImportSubmit }>Submit</button>
-                    </div>
-                    <div className="option">
-                        <span>Remove</span>
-                        <input
-                            type="text"
-                            placeholder="id"
-                            onChange={ this.handleRemoveIdChange } />
-                        <input
-                            type="text"
-                            placeholder="mnemonic"
-                            onChange={ this.handleRemoveMnemonicChange } />
-                        <button onClick={ this.handleRemoveSubmit }>Remove</button>
-                    </div>
+            <div className="content">
+                <div className="option">
+                    <span>List</span>
+                    <button onClick={ this.handleList }>List</button>
+                </div>
+                <div className="option">
+                    <span>Create</span>
+                    <button onClick={ this.handleCreate }>Create</button>
+                </div>
+                <div className="option">
+                    <span>Peek</span>
+                    <input
+                        type="text"
+                        placeholder="mnemonic"
+                        onChange={ this.handlePeekInputChange } />
+                    <button onClick={ this.handlePeekSubmit }>Submit</button>
+                </div>
+                <div className="option">
+                    <span>Import</span>
+                    <input
+                        type="text"
+                        placeholder="mnemonic"
+                        onChange={ this.handleImportInputChange } />
+                    <button onClick={ this.handleImportSubmit }>Submit</button>
+                </div>
+                <div className="option">
+                    <span>Remove</span>
+                    <input
+                        type="text"
+                        placeholder="id"
+                        onChange={ this.handleRemoveIdChange } />
+                    <input
+                        type="text"
+                        placeholder="mnemonic"
+                        onChange={ this.handleRemoveMnemonicChange } />
+                    <button onClick={ this.handleRemoveSubmit }>Remove</button>
                 </div>
             </div>
         );

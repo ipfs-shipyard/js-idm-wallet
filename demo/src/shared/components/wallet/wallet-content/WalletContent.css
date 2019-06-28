@@ -5,36 +5,100 @@
     display: flex;
     flex-direction: row;
 
+    background-color: #131923;
+
     text-align: start;
-    font-family: 'Times New Roman', Times, serif;
+    font-family: Helvetica, Arial, sans-serif;
+    font-size: 16px;
 }
 
-.WalletContent .leftBar {
-    flex-basis: 60px;
+.WalletContent .menu {
+    flex-basis: 224px;
+    color: whitesmoke;
 }
 
-.WalletContent .container {
+.WalletContent .menu h1,
+.WalletContent .menu .timer {
+    margin-bottom: 50px;
+}
+
+.WalletContent .menu .timer {
+    font-size: 26px;
+}
+
+.WalletContent .menu > *:not(.links) {
+    padding: 0 30px;
+}
+
+.WalletContent .menu .links {
+    display: flex;
+    flex-direction: column;
+}
+
+.WalletContent .menu .links .button {
+    will-change: color;
+    position: relative;
+    font-size: 16px;
+    padding: 15px 30px;
+    background-color: #131923;
+    color: grey;
+    border: none;
+    cursor: pointer;
+    margin-bottom: 15px;
+    outline: 0;
+    transition: color 0.3s ease;
+}
+
+.WalletContent .menu .links .button:hover {
+    color: whitesmoke;
+}
+
+.WalletContent .menu .links .button.active {
+    color: whitesmoke;
+    background-image: linear-gradient(to right, #172232, transparent);
+}
+
+.WalletContent .menu .links .button.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: #4076C5;
+    border-radius: 0 3px 3px 0;
+}
+
+.WalletContent .menu .links .button div {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.WalletContent .content {
+    padding: 30px;
     flex-grow: 1;
+    background-color: #EBEBED;
+    border-radius: 25px 0 0 25px;
 }
 
-.WalletContent .container .top {
+/*.WalletContent .content .top {
     height: 40vh;
     background-color: #F3ECE5;
     overflow: hidden;
 }
 
-.WalletContent .container .top .timer {
+.WalletContent .content .top .timer {
     font-size: 100px;
     margin: 20px;
 }
 
-.WalletContent .container .top .timer::before {
+.WalletContent .content .top .timer::before {
     content: 'Current Session:';
     display: block;
     font-size: 30px;
 }
 
-.WalletContent .container .bottom {
+.WalletContent .content .bottom {
     height: 60vh;
     display: flex;
     overflow: hidden;
@@ -42,21 +106,22 @@
     color: rgb(201,213,210);
 }
 
-.WalletContent .container .bottom .section {
+.WalletContent .content .bottom .section {
     flex-grow: 1;
     max-width: 500px;
     padding: 30px;
     box-sizing: border-box;
 }
 
-.WalletContent .container .bottom .section .content {
+.WalletContent .content .bottom .section .content {
     border: 1px solid rgb(201,213,210);
 }
 
-.WalletContent .container .bottom .section .content .option {
+.WalletContent .content .bottom .section .content .option {
     margin: 20px;
 }
 
-.WalletContent .container .bottom .section .content .option > * {
+.WalletContent .content .bottom .section .content .option > * {
     margin: 0 10px;
 }
+*/
