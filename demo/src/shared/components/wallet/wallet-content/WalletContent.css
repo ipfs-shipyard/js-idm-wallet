@@ -79,6 +79,9 @@
     flex-grow: 1;
     background-color: #EBEBED;
     border-radius: 25px 0 0 25px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
 }
 
 /*.WalletContent .content .top {

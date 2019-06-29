@@ -1,7 +1,12 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import Console from '../../../console/Console';
 
 class Identities extends Component {
+    state = {
+        logToConsole: null,
+    };
+
     render() {
         return (
             <div className="content">
@@ -41,6 +46,7 @@ class Identities extends Component {
                         onChange={ this.handleRemoveMnemonicChange } />
                     <button onClick={ this.handleRemoveSubmit }>Remove</button>
                 </div>
+                <Console logData={ this.state.logToConsole }/>
             </div>
         );
     }
@@ -52,20 +58,20 @@ class Identities extends Component {
             const identities = wallet.identities.list();
 
             console.log('List Identities:');
-            identities.forEach((identity) => {
-                console.log('Identity:', identity);
-                console.log('Serialized:', {
+            const identitiesString = identities.map((identity) => {
+                return {
                     addedAt: identity.getAddedAt(),
                     id: identity.getId(),
                     did: identity.getDid(),
                     devices: identity.devices.list(),
                     backup: identity.backup.getData(),
                     profile: identity.profile.getDetails(),
-                });
-                console.log(' ');
+                };
             });
+            this.logToConsole(identitiesString);
             console.log('Final List Identities.');
         } catch (err) {
+            this.logToConsole(err);
             console.error(err);
         }
     };
@@ -87,16 +93,18 @@ class Identities extends Component {
         .then((identity) => {
             console.log('Created Identity:');
             console.log('Identity:', identity);
-            console.log('Serialized:', {
+            const serialized = {
                 addedAt: identity.getAddedAt(),
                 id: identity.getId(),
                 did: identity.getDid(),
                 devices: identity.devices.list(),
                 backup: identity.backup.getData(),
                 profile: identity.profile.getDetails(),
-            });
+            }
+            console.log('Serialized:', serialized);
             console.log(' ');
             console.log('End of Created Identity.');
+            this.logToConsole(serialized);
         });
     };
 
@@ -114,7 +122,10 @@ class Identities extends Component {
                 name: 'MacBook Pro',
             },
         })
-        .then((result) => console.log('Imported Identity:', result));
+        .then((result) => {
+            console.log('Imported Identity:', result);
+            this.logToConsole(result);
+        });
     };
 
     handlePeekInputChange = (event) => {
@@ -127,7 +138,10 @@ class Identities extends Component {
         wallet.identities.peek('ipid', {
             mnemonic: this.peekValue,
         })
-        .then((result) => console.log('Peek Resolved:', result));
+        .then((result) => {
+            console.log('Peek Resolved:', result)
+            this.logToConsole(result);
+        });
     };
 
     handleRemoveIdChange = (event) => {
@@ -144,8 +158,15 @@ class Identities extends Component {
         wallet.identities.remove(this.removeIdValue, {
             mnemonic: this.removeMnemonicValue,
         })
-        .then(() => console.log('Removed Successfully!'));
+        .then(() => {
+            console.log('Removed Successfully!')
+            this.logToConsole({ removed: "success"});
+        });
     };
+
+    logToConsole(result) {
+        this.setState({logToConsole: result});
+    }
 }
 
 Identities.propTypes = {
