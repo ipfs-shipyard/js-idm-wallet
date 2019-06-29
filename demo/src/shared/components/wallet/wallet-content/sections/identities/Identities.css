@@ -5,6 +5,7 @@
     overflow-x: scroll;
     white-space: nowrap;
     padding: 30px;
+    flex-shrink: 0;
 }
 
 .identitiesContainer > *:not(:last-child) {
@@ -13,6 +14,7 @@
 
 .operations {
     display: flex;
+    margin-bottom: 60px;
 }
 
 .operation {

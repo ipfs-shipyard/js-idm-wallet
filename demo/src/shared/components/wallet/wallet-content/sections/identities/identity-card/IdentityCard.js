@@ -17,15 +17,17 @@ class IdentityCard extends Component {
     }
 
     render() {
-        const { details: { name, ...rest } } = this.state;
+        const { details: { name, image, ...rest } } = this.state;
+        const filteredDetails = omit(rest, ['@context', '@type', 'identifier']);
+        const imgUrl = image || defaultAvatarUrl;
 
         return (
             <GenericCard className="genericCardContainer">
                 <div className="header">
-                    <img src={ defaultAvatarUrl } alt="avatar" />
+                    <img src={ imgUrl } alt="avatar" />
                     <span className="name">{ name }</span>
                 </div>
-                { Object.entries(omit(rest, ['@context', '@type', 'identifier'])).map(([key, value], index) => (
+                { Object.entries(filteredDetails).map(([key, value], index) => (
                     <span key={ index } className="info">{ `${capitalize(key)}: ${value}` }</span>
                 )) }
             </GenericCard>

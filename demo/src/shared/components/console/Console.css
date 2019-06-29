@@ -1,12 +1,9 @@
 .console {
-    position: absolute;
-    left: 30px;
-    right: 0;
-    bottom: 30px;
-    height: 200px;
+    position: relative;
+    flex: 0 0 300px;
+    margin-top: auto;
     border-radius: 5px 0 0 25px;
-    background-color: white;
-    box-shadow: 0 0 10px 1px gray;
+    box-shadow: 0 0 10px 1px grey;
     overflow: scroll;
     background-color: #141922 !important;
 }
