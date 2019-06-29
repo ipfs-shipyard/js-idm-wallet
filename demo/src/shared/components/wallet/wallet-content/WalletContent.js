@@ -6,8 +6,8 @@ import Section from './section';
 import './WalletContent.css';
 
 const links = {
-    LOCKER: 'Locker',
     IDENTITIES: 'Identities',
+    LOCKER: 'Locker',
     SESSIONS: 'Sessions',
 };
 
@@ -89,7 +89,7 @@ class WalletContent extends Component {
                 );
             default:
                 return (
-                    <p>PEDRO!</p>
+                    <p>WELCOME TO IDM UI!</p>
                 );
         }
     }

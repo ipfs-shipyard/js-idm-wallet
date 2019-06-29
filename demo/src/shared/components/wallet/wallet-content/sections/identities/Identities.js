@@ -84,47 +84,9 @@ class Identities extends Component {
             return <p>No identities yet</p>;
         }
 
-        return identities.map((identity, index) => {
-            return (
-                <IdentityCard key={ index } profile={ identity.profile.getDetails() } />
-            );
-        })
-
-        return (
-            <>
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-                <IdentityCard />
-            </>
-        );
+        return identities.map((identity) => (
+            <IdentityCard key={ identity.getId() } identity={ identity } />
+        ));
     }
 
     handleCreate = () => {

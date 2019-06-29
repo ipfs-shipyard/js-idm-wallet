@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "idm-wallet": "file:..",
+    "lodash": "^4.17.11",
     "react": "^16.8.3",
     "react-dom": "^16.8.3",
     "react-scripts": "2.1.5",
