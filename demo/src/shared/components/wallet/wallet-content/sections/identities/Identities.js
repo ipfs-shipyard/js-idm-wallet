@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import Console from '../../../../console/Console';
 import IdentityCard from './identity-card/IdentityCard';
+import Console from '../../../../console/Console';
+import GenericCard from '../../../../generic-card/GenericCard';
 import './Identities.css';
 
 class Identities extends Component {
@@ -15,32 +16,44 @@ class Identities extends Component {
                 <div className="identitiesContainer">
                     { this.renderIdentities() }
                 </div>
-                <div className="option">
-                    <span>List</span>
-                    <button onClick={ this.handleList }>List</button>
+                <div className="operations">
+                    { this.renderOperations() }
                 </div>
-                <div className="option">
-                    <span>Create</span>
-                    <button onClick={ this.handleCreate }>Create</button>
-                </div>
-                <div className="option">
-                    <span>Peek</span>
-                    <input
+                <Console logData={ this.state.logToConsole }/>
+            </>
+        );
+    }
+
+    renderOperations() {
+        return (
+            <>
+                <GenericCard className="operation">
+                    <h4>Create</h4>
+                    <div><button onClick={ this.handleCreate }>Create</button></div>
+                </GenericCard>
+                <GenericCard className="operation">
+                    <h4>Peek</h4>
+                    <div>
+                        <input
                         type="text"
                         placeholder="mnemonic"
                         onChange={ this.handlePeekInputChange } />
-                    <button onClick={ this.handlePeekSubmit }>Submit</button>
-                </div>
-                <div className="option">
-                    <span>Import</span>
+                        <button onClick={ this.handlePeekSubmit }>Submit</button>
+                    </div>
+                </GenericCard>
+                <GenericCard className="operation">
+                    <h4>Import</h4>
+                    <div>
                     <input
                         type="text"
                         placeholder="mnemonic"
                         onChange={ this.handleImportInputChange } />
                     <button onClick={ this.handleImportSubmit }>Submit</button>
-                </div>
-                <div className="option">
-                    <span>Remove</span>
+                    </div>
+                </GenericCard>
+                <GenericCard className="operation">
+                    <h4>Remove</h4>
+                    <div>
                     <input
                         type="text"
                         placeholder="id"
@@ -50,8 +63,8 @@ class Identities extends Component {
                         placeholder="mnemonic"
                         onChange={ this.handleRemoveMnemonicChange } />
                     <button onClick={ this.handleRemoveSubmit }>Remove</button>
-                </div>
-                <Console logData={ this.state.logToConsole }/>
+                    </div>
+                </GenericCard>
             </>
         );
     }
@@ -105,31 +118,6 @@ class Identities extends Component {
             </>
         );
     }
-
-    handleList = () => {
-        const { wallet } = this.props;
-
-        try {
-            const identities = wallet.identities.list();
-
-            console.log('List Identities:');
-            const identitiesString = identities.map((identity) => {
-                return {
-                    addedAt: identity.getAddedAt(),
-                    id: identity.getId(),
-                    did: identity.getDid(),
-                    devices: identity.devices.list(),
-                    backup: identity.backup.getData(),
-                    profile: identity.profile.getDetails(),
-                };
-            });
-            this.logToConsole(identitiesString);
-            console.log('Final List Identities.');
-        } catch (err) {
-            this.logToConsole(err);
-            console.error(err);
-        }
-    };
 
     handleCreate = () => {
         const { wallet } = this.props;

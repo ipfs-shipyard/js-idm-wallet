@@ -1,13 +1,14 @@
 .console {
     position: absolute;
-    left: 0;
+    left: 30px;
     right: 0;
-    bottom: 0;
+    bottom: 30px;
     height: 200px;
-    border-radius: 5px;
+    border-radius: 5px 0 0 25px;
     background-color: white;
     box-shadow: 0 0 10px 1px gray;
     overflow: scroll;
+    background-color: #141922 !important;
 }
 
 .console > pre {
