@@ -1,0 +1,12 @@
+.identitiesContainer {
+    margin-left: -30px;
+    max-width: 100%;
+    box-sizing: content-box;
+    overflow-x: scroll;
+    white-space: nowrap;
+    padding: 30px;
+}
+
+.identitiesContainer > *:not(:last-child) {
+    margin-right: 25px;
+}

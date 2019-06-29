@@ -14,12 +14,14 @@ const links = {
 class WalletContent extends Component {
     state = {
         currentLink: undefined,
+        identitiesList: undefined,
     };
 
     componentDidMount() {
         const { wallet } = this.props;
 
-        wallet.identities.load().then(() => console.log('Identities Loaded'));
+        wallet.identities.onChange(this.handleIdentitiesChange);
+        wallet.identities.load().then(this.handleIdentitiesChange);
     }
 
     render() {
@@ -43,16 +45,16 @@ class WalletContent extends Component {
 
     renderLinks() {
         const { currentLink } = this.state;
-        const { wallet } = this.props;
 
-        return Object.values(links).map((name) => {
+        return Object.values(links).map((name, index) => {
             const isCurrentLink = currentLink === name;
             const buttonClasses = `button ${isCurrentLink ? 'active' : '' }`;
 
             return (
                 <button
+                    key={ index }
                     name={ name }
-                    className={ buttonClasses }                    
+                    className={ buttonClasses }
                     onClick={ this.handleLinkClick }>
                     <div>{ name }</div>
                 </button>
@@ -61,7 +63,7 @@ class WalletContent extends Component {
     }
 
     renderContent() {
-        const { currentLink } = this.state;
+        const { currentLink, identitiesList } = this.state;
         const { wallet } = this.props;
 
         switch (currentLink) {
@@ -71,32 +73,34 @@ class WalletContent extends Component {
                         <Locker wallet={ wallet } />
                     </Section>
                 );
-                break;
             case links.IDENTITIES:
                 return (
                     <Section title="Identities">
-                        <Identities wallet={ wallet } />
+                        <Identities
+                            identities={ identitiesList }
+                            wallet={ wallet } />
                     </Section>
                 );
-                break;
             case links.SESSIONS:
                 return (
                     <Section title="Sessions">
                         <Sessions wallet={ wallet } />
                     </Section>
                 );
-                break;
             default:
                 return (
                     <p>PEDRO!</p>
                 );
-                break;
         }
     }
 
     handleLinkClick = (event) => {
         event.currentTarget.name && this.setState({ currentLink: event.currentTarget.name });
     }
+
+    handleIdentitiesChange = (idList) => {
+        this.setState({ identitiesList: idList });
+    };
 }
 
 WalletContent.propTypes = {

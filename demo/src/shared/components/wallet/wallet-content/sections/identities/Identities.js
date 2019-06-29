@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
-import Console from '../../../console/Console';
+import Console from '../../../../console/Console';
+import IdentityCard from './identity-card/IdentityCard';
+import './Identities.css';
 
 class Identities extends Component {
     state = {
@@ -9,7 +11,10 @@ class Identities extends Component {
 
     render() {
         return (
-            <div className="content">
+            <>
+                <div className="identitiesContainer">
+                    { this.renderIdentities() }
+                </div>
                 <div className="option">
                     <span>List</span>
                     <button onClick={ this.handleList }>List</button>
@@ -47,7 +52,57 @@ class Identities extends Component {
                     <button onClick={ this.handleRemoveSubmit }>Remove</button>
                 </div>
                 <Console logData={ this.state.logToConsole }/>
-            </div>
+            </>
+        );
+    }
+
+    renderIdentities() {
+        const { identities } = this.props;
+
+        if (!identities || !identities.length) {
+            return <p>No identities yet</p>;
+        }
+
+        return identities.map((identity, index) => {
+            return (
+                <IdentityCard key={ index } profile={ identity.profile.getDetails() } />
+            );
+        })
+
+        return (
+            <>
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+                <IdentityCard />
+            </>
         );
     }
 
@@ -171,6 +226,7 @@ class Identities extends Component {
 
 Identities.propTypes = {
     wallet: PropTypes.object.isRequired,
+    identities: PropTypes.array,
 };
 
 export default Identities;
