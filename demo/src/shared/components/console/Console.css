@@ -19,3 +19,20 @@
     border-radius: 0 !important;
     background-color: #141922 !important;
 }
+
+.console > .controls {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 60px;
+    background-color: white;
+    opacity: 0.7;
+    display:flex;
+    justify-content: space-between;
+    border-radius: 0 0 0 3px;
+
+}
+
+.console > .controls > button {
+    border-radius: 0;
+}

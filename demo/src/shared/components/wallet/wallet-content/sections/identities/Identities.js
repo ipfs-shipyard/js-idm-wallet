@@ -7,10 +7,14 @@ import './Identities.css';
 
 class Identities extends Component {
     state = {
-        logToConsole: null,
+        logArray: [],
+        logIndex: -1,
     };
 
     render() {
+        const { logArray, logIndex } = this.state;
+        console.log('logArray', logArray);
+        console.log('logIndex', logIndex);
         return (
             <>
                 <div className="identitiesContainer">
@@ -19,7 +23,11 @@ class Identities extends Component {
                 <div className="operations">
                     { this.renderOperations() }
                 </div>
-                <Console logData={ this.state.logToConsole }/>
+                <Console
+                    logData={ logArray[logIndex] }
+                    forward={ this.handleForwardOutput }
+                    backward={ this.handleBackwardOutput }
+                />
             </>
         );
     }
@@ -207,8 +215,36 @@ class Identities extends Component {
         });
     };
 
+    handleForwardOutput = () => {
+        const { logArray, logIndex} = this.state;
+
+        if(logIndex >= logArray.length - 1) {
+            return;
+        } else {
+            console.log("Avanço");
+            this.setState({logIndex: logIndex + 1});
+        }
+    }
+
+    handleBackwardOutput = () => {
+        const { logArray, logIndex} = this.state;
+
+        if(logIndex <= 0) {
+            return;
+        } else {
+            console.log("Retrocesso");
+            this.setState({logIndex: logIndex - 1});
+        }
+    }
+
     logToConsole(result) {
-        this.setState({logToConsole: result});
+        const { logArray, logIndex} = this.state;
+
+        const newLogArray = [...logArray, result]
+        this.setState({
+            logArray: newLogArray,
+            logIndex: logArray.length,
+        });
     }
 }
 
