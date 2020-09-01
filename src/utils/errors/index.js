@@ -13,6 +13,12 @@ export class UnavailableIpfsError extends BaseError {
     }
 }
 
+export class UnavailableWeb3Error extends BaseError {
+    constructor() {
+        super('Web3 node is unavailable', 'WEB3_UNAVAILABLE');
+    }
+}
+
 export class InvalidMasterLockOperationError extends BaseError {
     constructor() {
         super('Invalid master lock operation', 'INVALID_MASTER_OPERATION');
