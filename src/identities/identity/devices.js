@@ -111,7 +111,7 @@ class Devices {
 
         if (this.#devicesMap[currentId]) {
             this.#devicesMap[currentId] = merge(
-                { ...this.#devicesMap[currentId] },
+                { ...this.#devicesMap[currentId], current: true },
                 pick(this.#currentDeviceDescriptor, DESCRIPTOR_SENSITIVE_KEYS),
             );
         }
@@ -174,7 +174,7 @@ export const createDevices = async (currentDevice, identityDescriptor, didm, sto
     await storage.set(getCurrentDeviceKey(identityDescriptor.id), currentDeviceDescriptor, { encrypt: true });
     await orbitdbStore.put(currentDeviceDescriptor.id, currentDeviceWithoutSensitiveKeys);
 
-    return new Devices(currentDevice, identityDescriptor, didm, orbitdbStore);
+    return new Devices(currentDeviceDescriptor, identityDescriptor, didm, orbitdbStore);
 };
 
 export const restoreDevices = async (identityDescriptor, didm, storage, orbitdb) => {
