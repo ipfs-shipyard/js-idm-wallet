@@ -103,7 +103,7 @@
     "ipfs": "git://github.com/satazor/js-ipfs.git#ipfs-camp",
     "level": "^5.0.1",
     "lodash": "^4.17.11",
-    "nanoid": "^2.0.3",
+    "nanoid": "^3.1.31",
     "normalize-value": "^1.0.1",
     "orbit-db": "^0.21.3",
     "p-defer": "^3.0.0",
