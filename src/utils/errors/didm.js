@@ -17,3 +17,9 @@ export class MissingDidParameters extends BaseError {
         super(message, 'MISSING_DID_PARAMETERS');
     }
 }
+
+export class DidResolveError extends BaseError {
+    constructor(didMethod, error) {
+        super(`Error while resolving ${didMethod} document`, error);
+    }
+}
