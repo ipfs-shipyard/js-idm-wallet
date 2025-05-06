@@ -1,0 +1,41 @@
+.identitiesContainer {
+    margin-left: -30px;
+    max-width: 100%;
+    box-sizing: content-box;
+    overflow-x: scroll;
+    white-space: nowrap;
+    padding: 30px;
+    flex-shrink: 0;
+}
+
+.identitiesContainer > *:not(:last-child) {
+    margin-right: 25px;
+}
+
+.operations {
+    display: flex;
+    margin-bottom: 60px;
+}
+
+.operation {
+    flex-direction: column;
+    justify-content: space-between;
+    min-width: 120px;
+    margin-right: 30px;
+
+}
+
+.operation > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.operation:last-of-type {
+    margin-right: 0;
+}
+
+.operation input,
+.operation button {
+    margin-bottom: 5px;
+}

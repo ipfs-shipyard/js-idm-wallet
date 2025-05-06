@@ -1,0 +1,19 @@
+.card {
+    position: relative;
+    display: inline-flex;
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0px 10px 23px 7px rgba(0,0,0,0.14);
+}
+
+.card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background-color: #4076C5;
+    border-radius: 5px 5px 0 0;
+}

@@ -11,41 +11,38 @@ const mockApp = {
 class Sessions extends Component {
     render() {
         return (
-            <div className="section">
-                <h4>Sessions</h4>
-                <div className="content">
-                    <div className="option">
-                        <span>Get</span>
-                        <input
-                            type="text"
-                            placeholder="sessionId"
-                            onChange={ this.handleGetChange } />
-                        <button onClick={ this.handleGetSubmit }>Get</button>
-                    </div>
-                    <div className="option">
-                        <span>Is Valid</span>
-                        <input
-                            type="text"
-                            placeholder="sessionId"
-                            onChange={ this.handleIsValidChange } />
-                        <button onClick={ this.handleIsValidSubmit }>Check</button>
-                    </div>
-                    <div className="option">
-                        <span>Create</span>
-                        <input
-                            type="text"
-                            placeholder="identityId"
-                            onChange={ this.handleCreateChange } />
-                        <button onClick={ this.handleCreateSubmit }>Create</button>
-                    </div>
-                    <div className="option">
-                        <span>Destroy</span>
-                        <input
-                            type="text"
-                            placeholder="sessionId"
-                            onChange={ this.handleDestroyChange } />
-                        <button onClick={ this.handleDestroySubmit }>Destroy</button>
-                    </div>
+            <div className="content">
+                <div className="option">
+                    <span>Get</span>
+                    <input
+                        type="text"
+                        placeholder="sessionId"
+                        onChange={ this.handleGetChange } />
+                    <button onClick={ this.handleGetSubmit }>Get</button>
+                </div>
+                <div className="option">
+                    <span>Is Valid</span>
+                    <input
+                        type="text"
+                        placeholder="sessionId"
+                        onChange={ this.handleIsValidChange } />
+                    <button onClick={ this.handleIsValidSubmit }>Check</button>
+                </div>
+                <div className="option">
+                    <span>Create</span>
+                    <input
+                        type="text"
+                        placeholder="identityId"
+                        onChange={ this.handleCreateChange } />
+                    <button onClick={ this.handleCreateSubmit }>Create</button>
+                </div>
+                <div className="option">
+                    <span>Destroy</span>
+                    <input
+                        type="text"
+                        placeholder="sessionId"
+                        onChange={ this.handleDestroyChange } />
+                    <button onClick={ this.handleDestroySubmit }>Destroy</button>
                 </div>
             </div>
         );

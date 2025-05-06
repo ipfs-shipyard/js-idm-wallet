@@ -1,6 +1,6 @@
 import Sessions from './Sessions';
 import Locker from './Locker';
-import Identities from './Identities';
+import Identities from './identities/Identities';
 
 export {
     Sessions,
